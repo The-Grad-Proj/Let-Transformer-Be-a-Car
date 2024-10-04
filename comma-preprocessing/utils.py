@@ -34,14 +34,7 @@ def convert_video_to_frames(video_path, output_path):
 def convert_npy_to_csv(npy_file_path, csv_file_path):
     # Load the Numpy array from the .npy file
     data = np.load(npy_file_path)
-
-    # Check if the data is a structured array (with named columns) or a regular array
-    if isinstance(data, np.recarray) or data.dtype.names is not None:
-        # Structured array: Convert to pandas DataFrame for column handling
-        df = pd.DataFrame(data)
-    else:
-        # Regular Numpy array: Convert to DataFrame without column names
-        df = pd.DataFrame(data)
+    df = pd.DataFrame(data)
 
     # Save the DataFrame to a CSV file
     df.to_csv(csv_file_path, index=False)
