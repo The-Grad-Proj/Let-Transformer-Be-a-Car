@@ -4,8 +4,9 @@ import os
 import csv
 
 # Paths to the processed log directory and video file
-processed_log_dir = r'C:\Grad Proj\Let-Transformer-Be-a-Car-cc03bd2a4ac404d9883aad5f3f1da73cb67ef026\Example\b0c9d2329ad1606b_2018-07-27--06-03-57\4\processed_log'
-video_file = r'C:\Grad Proj\Let-Transformer-Be-a-Car-cc03bd2a4ac404d9883aad5f3f1da73cb67ef026\Example\b0c9d2329ad1606b_2018-07-27--06-03-57\4\video.hevc'
+# Update these paths accordingly
+processed_log_dir = r'YOUR_PROCESSED_LOG_DIRECTORY_PATH'  # e.g., r'C:\path\to\your\processed_log'
+video_file = r'YOUR_VIDEO_FILE_PATH'  # e.g., r'C:\path\to\your\video.hevc'
 
 # Load steering angle and timestamp arrays
 steering_angle = np.load(os.path.join(processed_log_dir, 'CAN', 'steering_angle', 'value'))
@@ -18,7 +19,8 @@ cap = cv2.VideoCapture(video_file)
 frame_rate = cap.get(cv2.CAP_PROP_FPS)
 
 # Path to save preprocessed frames
-os.makedirs('preprocessed_frames', exist_ok=True)
+output_frames_dir = 'preprocessed_frames'
+os.makedirs(output_frames_dir, exist_ok=True)
 
 frame_count = 0
 processed_frame_count = 0
@@ -44,7 +46,7 @@ while cap.isOpened():
 
     # Save frame with the same ID as the processed frame count
     frame_id = processed_frame_count
-    frame_path = f'preprocessed_frames/frame_{frame_id}.jpg'
+    frame_path = os.path.join(output_frames_dir, f'frame_{frame_id}.jpg')
     cv2.imwrite(frame_path, frame)
 
     # Get the corresponding steering angle based on the 1:4 sampling
