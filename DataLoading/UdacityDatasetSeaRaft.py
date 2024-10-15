@@ -17,7 +17,7 @@ from utils.utils import InputPadder  # Helper function for RAFT
 import torch.nn.functional as F
 from aug_utils import apply_augs  # Import augmentations from aug_utils
 
-class UdacityDatasetSeaRaft(Dataset):
+class UdacityDataset(Dataset):
     def __init__(self, csv_file, root_dir, transform=None, select_camera=None, slice_frames=None, 
                  select_ratio=1.0, select_range=None, optical_flow=True, seq_len=0, img_size=(224, 224), raft_weights=None):
         
