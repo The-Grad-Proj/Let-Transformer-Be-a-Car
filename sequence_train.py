@@ -5,7 +5,6 @@ Created on Sat Nov  6 12:24:40 2021
 
 @author: chingis
 """
-RAFT = True
 
 from easydict import EasyDict as edict
 from tqdm import tqdm
@@ -14,10 +13,7 @@ import torch
 from torch.utils.data import DataLoader
 from torchvision import transforms
 import torch.optim as optim
-if RAFT:
-    from DataLoading import UdacityDatasetSeaRaft as UD
-else:
-    from DataLoading import UdacityDataset as UD
+from DataLoading import UdacityDataset as UD
 from DataLoading import ConsecutiveBatchSampler as CB
 from model.MotionTransformer import MotionTransformer
 from model.SimpleTransformer import SimpleTransformer
