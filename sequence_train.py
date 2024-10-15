@@ -5,6 +5,7 @@ Created on Sat Nov  6 12:24:40 2021
 
 @author: chingis
 """
+RAFT = True
 
 from easydict import EasyDict as edict
 from tqdm import tqdm
@@ -13,7 +14,10 @@ import torch
 from torch.utils.data import DataLoader
 from torchvision import transforms
 import torch.optim as optim
-from DataLoading import UdacityDataset as UD
+if RAFT:
+    from DataLoading import UdacityDatasetSeaRaft as UD
+else:
+    from DataLoading import UdacityDataset as UD
 from DataLoading import ConsecutiveBatchSampler as CB
 from model.MotionTransformer import MotionTransformer
 from model.SimpleTransformer import SimpleTransformer
@@ -70,8 +74,8 @@ wandb.init(config=parameters, project='self-driving-car')
 wandb.watch(network)
 optimizer = optim.Adam(network.parameters(),lr = parameters.learning_rate,betas=(0.9, 0.999), eps=1e-08)
 
-udacity_dataset = UD.UdacityDataset(csv_file='/home/chingis/self-driving-car/output/interpolated.csv',
-                             root_dir='/home/chingis/self-driving-car/output/',
+udacity_dataset = UD.UdacityDataset(csv_file='/home/norhan/outputUdacity/interpolated.csv',
+                             root_dir='/home/norhan/outputUdacity',
                              transform=transforms.Compose([transforms.ToTensor()]),
                              select_camera='center_camera')
 
@@ -79,8 +83,8 @@ dataset_size = int(len(udacity_dataset))
 del udacity_dataset
 split_point = int(dataset_size * 0.9)
 
-training_set = UD.UdacityDataset(csv_file='/home/chingis/self-driving-car/output/interpolated.csv',
-                             root_dir='/home/chingis/self-driving-car/output/',
+training_set = UD.UdacityDataset(csv_file='/home/norhan/outputUdacity/interpolated.csv',
+                             root_dir='/home/norhan/outputUdacity',
                              transform=transforms.Compose([
                                  #transforms.Resize((224,224)),#(120,320)
                                  transforms.ToTensor(),
@@ -91,8 +95,8 @@ training_set = UD.UdacityDataset(csv_file='/home/chingis/self-driving-car/output
                              optical_flow=parameters.optical_flow,
                              select_camera='center_camera',
                              select_range=(0,split_point))
-validation_set = UD.UdacityDataset(csv_file='/home/chingis/self-driving-car/output/interpolated.csv',
-                             root_dir='/home/chingis/self-driving-car/output/',
+validation_set = UD.UdacityDataset(csv_file='/home/norhan/outputUdacity/interpolated.csv',
+                             root_dir='/home/norhan/outputUdacity',
                              transform=transforms.Compose([
                                 # transforms.Resize((224,224)),
                                  transforms.ToTensor(),
