@@ -47,6 +47,9 @@ def extract_frames_from_video(video_file, steering_angle, output_frames_dir, mai
         if local_frame_count >= max_steering_angles:
             break
 
+        # Resizing the frame
+        frame = cv2.resize(frame, (224, 224))
+
         # Create the frame name
         frame_ID = f"{os.path.basename(main_folder)}_{nested_folder}_{local_frame_count}.jpg"
         frame_path = os.path.join(output_frames_dir, frame_ID)
@@ -91,7 +94,7 @@ def main():
     parent_dir = r'D:\Mechatronics\Graduation Project\Let-Transformer-Be-a-Car\Example'
 
     # Write how many folders to iterate through
-    num_folders_to_process = 2
+    num_folders_to_process = 1
 
     # Path to save all preprocessed frames directly in this directory
     output_frames_dir = 'preprocessed_frames'
