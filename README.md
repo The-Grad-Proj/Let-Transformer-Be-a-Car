@@ -20,6 +20,11 @@
 ## How to train
 ### Create Conda enviroment:
 `conda env create -f SEA-RAFT.yml`
+### SEA-RAFT
+1. Clone SEA-RAFT repo: `git clone https://github.com/princeton-vl/SEA-RAFT.git`
+2. Download Tartan-C-T-TSKH-spring540x960-M.pth from Google Drive: [link](https://drive.google.com/drive/folders/1YLovlvUW94vciWvTyLf-p3uWscbOQRWW)
+3. copy to file into /SEA-RAFT/models
+4. update [sequence_train_sea_raft.py] with correct paths
 
 ### Sequence Models:
 
