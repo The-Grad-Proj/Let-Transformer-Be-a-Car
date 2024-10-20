@@ -18,6 +18,8 @@
 - Extract images and csv from .bag files: https://github.com/rwightman/udacity-driving-reader
 
 ## How to train
+### Create Conda enviroment:
+`conda env create -f SEA-RAFT.yml`
 
 ### Sequence Models:
 
