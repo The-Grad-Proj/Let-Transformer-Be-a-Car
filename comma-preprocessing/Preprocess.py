@@ -80,21 +80,29 @@ def process_video(main_folder, nested_folder, output_frames_dir, csv_file_path):
     # Check if the required processed_log directory and video file exist
     if not os.path.exists(nested_folder_path) or not os.path.isfile(video_file):
         print(f"Skipping {nested_folder}, missing processed log directory or video file.")
-        return
+        return None, None
 
     steering_angle = load_steering_angles(nested_folder_path)
     if steering_angle is None:
-        return
+        return None, None
+
+    min_angle = float('inf')
+    max_angle = float('-inf')
 
     for frame_ID, angle in extract_frames_from_video(video_file, steering_angle, output_frames_dir, main_folder, nested_folder):
         write_to_csv(csv_file_path, frame_ID, angle)
+        min_angle = min(min_angle, angle)
+        max_angle = max(max_angle, angle)
+
+    return min_angle, max_angle
 
 def main():
     # Path to the parent directory where the main folders are located
     parent_dir = r'D:\Mechatronics\Graduation Project\Let-Transformer-Be-a-Car\Example'
 
-    # Write how many folders to iterate through
-    num_folders_to_process = 1
+    # User input for the starting and ending index of nested folders to process
+    start_index = int(input("Enter the starting index of the nested folders to process: "))
+    end_index = int(input("Enter the ending index of the nested folders to process: "))
 
     # Path to save all preprocessed frames directly in this directory
     output_frames_dir = 'preprocessed_frames'
@@ -104,27 +112,39 @@ def main():
     csv_file_path = 'steering_data_combined.csv'
     initialize_csv(csv_file_path)
 
+    # Variables to keep track of global min and max steering angles
+    global_min_angle = float('inf')
+    global_max_angle = float('-inf')
     folders_processed = 0
+    total_nested_folders = []
 
-    # Iterate through each subfolder in the parent directory, limited by user input
+    # Gather all nested folders across main folders
     for main_folder in os.listdir(parent_dir):
         main_folder_path = os.path.join(parent_dir, main_folder)
-
-        # Stop processing if the specified number of folders has been reached
-        if folders_processed >= num_folders_to_process:
-            break
-
-        # Check if it's a directory
         if not os.path.isdir(main_folder_path):
             continue
 
-        # Iterate through the nested folders (like '3')
-        for nested_folder in os.listdir(main_folder_path):
-            process_video(main_folder_path, nested_folder, output_frames_dir, csv_file_path)
+        nested_folders = os.listdir(main_folder_path)
+        for nested_folder in nested_folders:
+            total_nested_folders.append((main_folder_path, nested_folder))
 
-            folders_processed += 1
+    # Process the nested folders within the specified range
+    for i in range(start_index, min(end_index, len(total_nested_folders))):
+        main_folder_path, nested_folder = total_nested_folders[i]
+        min_angle, max_angle = process_video(main_folder_path, nested_folder, output_frames_dir, csv_file_path)
 
-    print("All folders processed. Combined data written to", csv_file_path)
+        if min_angle is not None and max_angle is not None:
+            global_min_angle = min(global_min_angle, min_angle)
+            global_max_angle = max(global_max_angle, max_angle)
+
+        folders_processed += 1
+
+    # Print the global minimum and maximum steering angles
+    if global_min_angle != float('inf') and global_max_angle != float('-inf'):
+        print(f"Global minimum steering angle: {global_min_angle}")
+        print(f"Global maximum steering angle: {global_max_angle}")
+    else:
+        print("No valid steering angle data found in the specified range.")
 
 if __name__ == "__main__":
     main()
