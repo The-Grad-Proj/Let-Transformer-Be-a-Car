@@ -13,13 +13,16 @@ import torch
 from torch.utils.data import DataLoader
 from torchvision import transforms
 import torch.optim as optim
-from DataLoading import UdacityDatasetSeaRaft as UD
+from DataLoading import UdacityDatasetSeaRaft2 as UD
 from DataLoading import ConsecutiveBatchSampler as CB
 from model.MotionTransformer import MotionTransformer
 from model.SimpleTransformer import SimpleTransformer
 from model.LSTM import SequenceModel
 import wandb
 import os
+import sys
+sys.path.append('/home/norhan/Let-Transformer-Be-a-Car/DataLoading/aug_utils.py')
+
 # noinspection PyAttributeOutsideInit
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -73,8 +76,7 @@ optimizer = optim.Adam(network.parameters(),lr = parameters.learning_rate,betas=
 udacity_dataset = UD.UdacityDatasetSeaRaft(csv_file='/home/norhan/outputUdacity/interpolated.csv',
                              root_dir='/home/norhan/outputUdacity',
                              transform=transforms.Compose([transforms.ToTensor()]),
-                             select_camera='center_camera',
-                             raft_weights='/home/norhan/SEA-RAFT/models/Tartan-C-T-TSKH-spring540x960-M.pth')
+                             select_camera='center_camera')
 
 dataset_size = int(len(udacity_dataset))
 del udacity_dataset
@@ -91,8 +93,7 @@ training_set = UD.UdacityDatasetSeaRaft(csv_file='/home/norhan/outputUdacity/int
                              seq_len=parameters.seq_len,
                              optical_flow=parameters.optical_flow,
                              select_camera='center_camera',
-                             select_range=(0,split_point),
-                             raft_weights='/home/norhan/SEA-RAFT/models/Tartan-C-T-TSKH-spring540x960-M.pth')
+                             select_range=(0,split_point))
 validation_set = UD.UdacityDatasetSeaRaft(csv_file='/home/norhan/outputUdacity/interpolated.csv',
                              root_dir='/home/norhan/outputUdacity',
                              transform=transforms.Compose([
@@ -104,8 +105,7 @@ validation_set = UD.UdacityDatasetSeaRaft(csv_file='/home/norhan/outputUdacity/i
                              seq_len=parameters.seq_len,
                              optical_flow=parameters.optical_flow,
                              select_camera='center_camera',
-                             select_range=(split_point,dataset_size),
-                             raft_weights='/home/norhan/SEA-RAFT/models/Tartan-C-T-TSKH-spring540x960-M.pth')
+                             select_range=(split_point,dataset_size))
 
 
 training_cbs = CB.ConsecutiveBatchSampler(data_source=training_set, batch_size=parameters.batch_size,use_all_frames=parameters.all_frames, shuffle=True, drop_last=False, seq_len=parameters.seq_len)
