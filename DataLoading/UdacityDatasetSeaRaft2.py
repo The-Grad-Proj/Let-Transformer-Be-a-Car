@@ -17,7 +17,7 @@ from parser import parse_args
 from torchvision import transforms
 from utils.flow_viz import flow_to_image
 
-class UdacityDataset(Dataset):
+class UdacityDatasetSeaRaft(Dataset):
     def __init__(self, csv_file, root_dir, transform=None, select_camera=None, slice_frames=None,
                  select_ratio=1.0, select_range=None, optical_flow=True, seq_len=0, img_size=(224, 224),
                  model_path='/home/norhan/SEA-RAFT/models/Tartan-C-T-TSKH-spring540x960-M.pth', config_path='/home/norhan/SEA-RAFT/config/eval/spring-M.json'):
@@ -73,7 +73,7 @@ class UdacityDataset(Dataset):
 
     def forward_flow(self, image1, image2):
         """Compute optical flow between two images using SEA-RAFT."""
-        output = self.model(image1, image2, iters=20, test_mode=True)  # Configurable iterations
+        output = self.model.forward(image1, image2, iters=20, test_mode=True)  # Configurable iterations
         flow_final = output['flow'][-1]  # Get final optical flow output
         return flow_final
 
