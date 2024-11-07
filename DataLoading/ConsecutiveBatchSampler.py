@@ -7,6 +7,9 @@
 from torch.utils.data import Sampler
 import random
 
+
+
+############### A subclass that inherits from Sampler class in torch.utils.data.sampler.py #######################################3
 class ConsecutiveBatchSampler(Sampler):
     
     def __init__(self, data_source, batch_size, seq_len, drop_last=False, shuffle=True, use_all_frames=False):
