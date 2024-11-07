@@ -41,7 +41,7 @@ class ConsecutiveBatchSampler(Sampler):
     
     def __iter__(self): # Provide a way to iterate over indices or lists of indices (batches) of dataset elements
         
-        data_size = len(self.data_source)
+        data_size = len(self.data_source) #determines how many total data points are there in the data source
         
         if self.use_all_frames_:
             start_indices = list(range(data_size))
