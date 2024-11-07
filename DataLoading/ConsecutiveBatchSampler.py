@@ -9,7 +9,7 @@ import random
 
 
 
-############### A subclass that inherits from Sampler class in torch.utils.data.sampler.py #######################################3
+############### A subclass that inherits from Sampler class in torch.utils.data.sampler.py #######################################################
 class ConsecutiveBatchSampler(Sampler):
     
     def __init__(self, data_source, batch_size, seq_len, drop_last=False, shuffle=True, use_all_frames=False):
@@ -24,18 +24,22 @@ class ConsecutiveBatchSampler(Sampler):
         Return:
             List of iterators, size: [batch_size x seq_len x n_channels x height x width]
         """
-        super(ConsecutiveBatchSampler, self).__init__(data_source)
-        
+
+        ########################### Call the __init__ function in superclass Sampler #############################
+        super(ConsecutiveBatchSampler, self).__init__(data_source) ## Warning if data_source is passed 
+        ##########################################################################################################
+
+
         self.data_source = data_source
         
-        assert seq_len >= 1, "Invalid batch size: {}".format(seq_len)
+        assert seq_len >= 1, "Invalid batch size: {}".format(seq_len) ## Raise an error if seq_len >= 1
         self.seq_len = seq_len
         self.drop_last = drop_last
         self.shuffle = shuffle
         self.batch_size = batch_size
         self.use_all_frames_ = use_all_frames
     
-    def __iter__(self):
+    def __iter__(self): # Provide a way to iterate over indices or lists of indices (batches) of dataset elements
         
         data_size = len(self.data_source)
         
@@ -66,7 +70,7 @@ class ConsecutiveBatchSampler(Sampler):
                 batch = []
 
     
-    def __len__(self):
+    def __len__(self): # Returns the length of the returned iterators
         length = len(self.data_source)
         batch_size = self.batch_size
         
