@@ -41,7 +41,7 @@ class ConsecutiveBatchSampler(Sampler):
     
     def __iter__(self): # Provide a way to iterate over indices or lists of indices (batches) of dataset elements
         
-        data_size = len(self.data_source) #determines how many total data points are there in the data source
+        data_size = len(self.data_source) ## Determines how many total data points are there in the data source
         
         if self.use_all_frames_:
             start_indices = list(range(data_size))
@@ -49,7 +49,7 @@ class ConsecutiveBatchSampler(Sampler):
             start_indices = list(range(1, data_size, self.seq_len))
             
         if self.shuffle:
-            random.shuffle(start_indices)
+            random.shuffle(start_indices) ## Shuffle start_indices list if True
         
         batch = []
         for idx, ind in enumerate(start_indices):
