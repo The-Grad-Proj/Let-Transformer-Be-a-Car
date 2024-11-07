@@ -46,14 +46,14 @@ class ConsecutiveBatchSampler(Sampler):
         if self.use_all_frames_:
             start_indices = list(range(data_size))
         else:
-            start_indices = list(range(1, data_size, self.seq_len))
+            start_indices = list(range(1, data_size, self.seq_len)) #[1, 6, 11, 16, 21, ...]
             
         if self.shuffle:
             random.shuffle(start_indices) ## Shuffle start_indices list if True
         
         batch = []
-        for idx, ind in enumerate(start_indices):
-            if data_size - idx < self.batch_size and self.drop_last: # if last batch
+        for idx, ind in enumerate(start_indices): ## Index will be stored in idx ## Value will be stored in ind
+            if data_size - idx < self.batch_size and self.drop_last: ## If data remaining is less than batch size, then its a incomplete batch
                 break
                 
             seq = []
@@ -66,7 +66,7 @@ class ConsecutiveBatchSampler(Sampler):
             
             if len(batch) == self.batch_size or idx == data_size - 1:
                # print(batch)
-                yield batch
+                yield batch ## Return batch and without terminating the function and waits for next function call 
                 batch = []
 
     
