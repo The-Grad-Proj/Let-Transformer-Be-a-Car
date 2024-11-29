@@ -125,13 +125,28 @@ def adjust_learning_rate(optimizer, epoch):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
-for epoch in range(parameters.epochs):
+# Check for an existing model
+saved_model_path = f'saved_models/{parameters.model_name}/last_epoch.tar'
+start_epoch = 0
+
+if os.path.exists(saved_model_path):
+    print(f"Found a saved model at {saved_model_path}, loading...")
+    checkpoint = torch.load(saved_model_path)
+    network.load_state_dict(checkpoint['model_state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    start_epoch = checkpoint['epoch'] + 1  # Resume from the next epoch
+    print(f"Resuming training from epoch {start_epoch}.")
+else:
+    print("No saved model found. Starting training from scratch.")
+
+# Training Loop
+for epoch in range(start_epoch, parameters.epochs):
     train_angle_losses = AverageMeter()
     train_speed_losses = AverageMeter()
-    torch.save(network.state_dict(), f'saved_models/{parameters.model_name}/epoch.tar')
+    
     network.train()
     adjust_learning_rate(optimizer, epoch)
-    # Calculation on Training Loss
+
     for training_sample in tqdm(training_loader):
         param_values = [v for v in training_sample.values()]
         if parameters.optical_flow:
@@ -140,13 +155,13 @@ for epoch in range(parameters.epochs):
             speed = speed.float().reshape(-1, 1).to(device)
         else:
             image, angle = param_values
-        cur_bn = image.shape[0]
+
         loss = 0
         image = image.to(device)
         if parameters.optical_flow:
-            angle_hat, speed_hat = network(image, optical)  
+            angle_hat, speed_hat = network(image, optical)
             speed_hat = speed_hat.reshape(-1, 1)
-            training_loss_speed = speed_criterion(speed_hat,speed)
+            training_loss_speed = speed_criterion(speed_hat, speed)
             loss += training_loss_speed
             train_speed_losses.update(training_loss_speed.item())
         else:
@@ -154,7 +169,7 @@ for epoch in range(parameters.epochs):
 
         angle_hat = angle_hat.reshape(-1, 1)
         angle = angle.float().reshape(-1, 1).to(device)
-        training_loss_angle = torch.sqrt(criterion(angle_hat,angle) + 1e-6)
+        training_loss_angle = torch.sqrt(criterion(angle_hat, angle) + 1e-6)
         loss += training_loss_angle
 
         train_angle_losses.update(training_loss_angle.item())
@@ -162,47 +177,61 @@ for epoch in range(parameters.epochs):
         loss.backward()
         optimizer.step()
 
-    
-    print("Done")
-    report = {}
+    print(f"Epoch {epoch} Training Loss: Angle = {train_angle_losses.avg}, Speed = {train_speed_losses.avg}")
+
+    # Save model after every epoch
+    save_path = f'saved_models/{parameters.model_name}/last_epoch.tar'
+    torch.save({
+        'epoch': epoch,
+        'model_state_dict': network.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'parameters': dict(parameters)  # Save parameters for reference
+    }, save_path)
+
+    # Validation (if applicable)
     if split_point != dataset_size:
         network.eval()
         val_speed_losses = AverageMeter()
         val_angle_losses = AverageMeter()
-        with torch.no_grad():    
-            for Validation_sample in tqdm(validation_loader):
-                param_values = [v for v in Validation_sample.values()]
+        with torch.no_grad():
+            for validation_sample in tqdm(validation_loader):
+                param_values = [v for v in validation_sample.values()]
                 if parameters.optical_flow:
                     image, angle, optical, speed = param_values
                     optical = optical.to(device)
                     speed = speed.float().reshape(-1, 1).to(device)
                 else:
                     image, angle = param_values
-                cur_bn = image.shape[0]
+
                 loss = 0
                 image = image.to(device)
-                #optical = optical.to(device)
                 if parameters.optical_flow:
-                    angle_hat, speed_hat = network(image, optical)  
+                    angle_hat, speed_hat = network(image, optical)
                     speed_hat = speed_hat.reshape(-1, 1)
-                    validation_loss_speed = speed_criterion(speed_hat,speed)
+                    validation_loss_speed = speed_criterion(speed_hat, speed)
                     loss += validation_loss_speed
                     val_speed_losses.update(validation_loss_speed.item())
                 else:
                     angle_hat = network(image)
                 angle_hat = angle_hat.reshape(-1, 1)
                 angle = angle.float().reshape(-1, 1).to(device)
-    
-                validation_loss_angle = torch.sqrt(criterion(angle_hat,angle) + 1e-6)
+
+                validation_loss_angle = torch.sqrt(criterion(angle_hat, angle) + 1e-6)
                 loss += validation_loss_angle
-    
+
                 val_angle_losses.update(validation_loss_angle.item())
-        report['val_loss'] = val_angle_losses.avg
-    report['training_loss'] = train_angle_losses.avg
+
+        print(f"Epoch {epoch} Validation Loss: Angle = {val_angle_losses.avg}, Speed = {val_speed_losses.avg}")
+
+    # Log results to WandB
+    report = {
+        'training_angle_loss': train_angle_losses.avg,
+        'epoch': epoch,
+    }
     if parameters.optical_flow:
         report['training_speed_loss'] = train_speed_losses.avg
         if split_point != dataset_size:
-            report['validation_speed_loss'] = val_speed_losses.avg    
+            report['validation_angle_loss'] = val_angle_losses.avg
+            report['validation_speed_loss'] = val_speed_losses.avg
 
     wandb.log(report)
-    
