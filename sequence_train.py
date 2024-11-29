@@ -21,6 +21,55 @@ from model.LSTM import SequenceModel
 import wandb
 import os
 # noinspection PyAttributeOutsideInit
+def load_model(model_path, default_parameters):
+    if os.path.exists(model_path):
+        checkpoint = torch.load(model_path)
+        parameters = checkpoint['parameters']
+        if parameters.model_name == 'LSTM':
+            model_object = SequenceModel
+        elif parameters.model_name == 'MotionTransformer' :
+            model_object = MotionTransformer
+        elif parameters.model_name == 'SimpleTransformer' :
+            model_object = SimpleTransformer
+        else:
+            raise KeyError("Unknown Architecture")
+        network = model_object(parameters.seq_len)
+        network.load_state_dict(checkpoint['model_state_dict'])
+        optimizer = optim.Adam(network.parameters(), lr=parameters.learning_rate, betas=(0.9, 0.999), eps=1e-08)
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        last_epoch = checkpoint['epoch']
+    else:
+        parameters = default_parameters
+        if parameters.model_name == 'LSTM':
+            model_object = SequenceModel
+        elif parameters.model_name == 'MotionTransformer' :
+            model_object = MotionTransformer
+        elif parameters.model_name == 'SimpleTransformer' :
+            model_object = SimpleTransformer
+        else:
+            raise KeyError("Unknown Architecture")
+        network = model_object(parameters.seq_len)
+        optimizer = optim.Adam(network.parameters(), lr=parameters.learning_rate, betas=(0.9, 0.999), eps=1e-08)
+        last_epoch = 0
+
+    return network, optimizer, parameters, last_epoch
+
+# Load parameters if available else use default
+default_parameters = edict(
+    learning_rate = 0.0001,
+    batch_size = 13,
+    seq_len = 5,
+    num_workers = 8,
+    model_name = 'MotionTransformer',
+    normalization = ([0.485, 0.456, 0.406],
+                    [0.229, 0.224, 0.225]),
+    image_size=(224, 224),
+    epochs=161,
+    all_frames=False,
+    optical_flow=True
+)
+
+
 class AverageMeter(object):
     """Computes and stores the average and current value"""
 
@@ -38,37 +87,14 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
-device = torch.device("cuda")
 
-parameters = edict(
-    learning_rate = 0.0001,
-    batch_size = 13,
-    seq_len = 5,
-    num_workers = 8,
-    model_name = 'MotionTransformer',
-    normalization = ([0.485, 0.456, 0.406],
-                    [0.229, 0.224, 0.225]),
-    image_size=(224, 224),
-    epochs=161,
-    all_frames=False,
-    optical_flow=True
-)
-if not os.path.exists( f'saved_models/{parameters.model_name}'):
-    os.makedirs(f'saved_models/{parameters.model_name}')
-if parameters.model_name == 'LSTM':
-    model_object = SequenceModel
-elif parameters.model_name == 'MotionTransformer' :
-    model_object = MotionTransformer
-elif parameters.model_name == 'SimpleTransformer' :
-    model_object = SimpleTransformer
-else:
-    raise KeyError("Unknown Architecture")
-    
-network = model_object(parameters.seq_len) 
+device = torch.device("cuda")
+model_path = f"saved_models/{default_parameters.model_name}/last_epoch.tar" # Change this to the path of the model you want to resume training from
+network, optimizer, parameters, last_epoch = load_model(model_path)
 network.to(device)
+
 wandb.init(config=parameters, project='self-driving-car')
 wandb.watch(network)
-optimizer = optim.Adam(network.parameters(),lr = parameters.learning_rate,betas=(0.9, 0.999), eps=1e-08)
 
 udacity_dataset = UD.UdacityDataset(csv_file='/home/norhan/outputUdacity/interpolated.csv',
                              root_dir='/home/norhan/outputUdacity',
@@ -125,22 +151,12 @@ def adjust_learning_rate(optimizer, epoch):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
-# Check for an existing model
-saved_model_path = f'saved_models/{parameters.model_name}/last_epoch.tar'
-start_epoch = 0
+experiment_epochs = 40
+last_epoch_saved = None
 
-if os.path.exists(saved_model_path):
-    print(f"Found a saved model at {saved_model_path}, loading...")
-    checkpoint = torch.load(saved_model_path)
-    network.load_state_dict(checkpoint['model_state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    start_epoch = checkpoint['epoch'] + 1  # Resume from the next epoch
-    print(f"Resuming training from epoch {start_epoch}.")
-else:
-    print("No saved model found. Starting training from scratch.")
 
 # Training Loop
-for epoch in range(start_epoch, parameters.epochs):
+for epoch in range(last_epoch, min(parameters.epochs, last_epoch + experiment_epochs)):
     train_angle_losses = AverageMeter()
     train_speed_losses = AverageMeter()
     
@@ -178,15 +194,17 @@ for epoch in range(start_epoch, parameters.epochs):
         optimizer.step()
 
     print(f"Epoch {epoch} Training Loss: Angle = {train_angle_losses.avg}, Speed = {train_speed_losses.avg}")
+    last_epoch_saved = epoch
 
     # Save model after every epoch
-    save_path = f'saved_models/{parameters.model_name}/last_epoch.tar'
-    torch.save({
-        'epoch': epoch,
-        'model_state_dict': network.state_dict(),
-        'optimizer_state_dict': optimizer.state_dict(),
-        'parameters': dict(parameters)  # Save parameters for reference
-    }, save_path)
+    if (epoch + 1) % 10 == 0:
+        save_path = f'saved_models/{parameters.model_name}/epoch_{epoch + 1}.tar'
+        torch.save({
+            'epoch': epoch + 1,
+            'model_state_dict': network.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'parameters': dict(parameters)  # Save parameters for reference
+        }, save_path)
 
     # Validation (if applicable)
     if split_point != dataset_size:
@@ -235,3 +253,13 @@ for epoch in range(start_epoch, parameters.epochs):
             report['validation_speed_loss'] = val_speed_losses.avg
 
     wandb.log(report)
+
+# Save model after the last epoch
+if last_epoch_saved is not None:
+    save_path = f'saved_models/{parameters.model_name}/last_epoch_{last_epoch_saved + 1}.tar'
+    torch.save({
+        'epoch': last_epoch_saved + 1,
+        'model_state_dict': network.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'parameters': dict(parameters)  # Save parameters for reference
+    }, save_path)
