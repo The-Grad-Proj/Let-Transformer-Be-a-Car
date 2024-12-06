@@ -21,6 +21,7 @@ from model.LSTM import SequenceModel
 import wandb
 import os
 # noinspection PyAttributeOutsideInit
+
 def load_model(model_path, default_parameters):
     if os.path.exists(model_path):
         checkpoint = torch.load(model_path)
@@ -96,8 +97,10 @@ network.to(device)
 wandb.init(config=parameters, project='self-driving-car')
 wandb.watch(network)
 
-udacity_dataset = UD.UdacityDataset(csv_file='/home/norhan/outputUdacity/interpolated.csv',
-                             root_dir='/home/norhan/outputUdacity',
+DATASET_PATH = '/home/norhan/outputUdacity'
+
+udacity_dataset = UD.UdacityDataset(csv_file=f'{DATASET_PATH}/interpolated.csv',
+                             root_dir=DATASET_PATH,
                              transform=transforms.Compose([transforms.ToTensor()]),
                              select_camera='center_camera')
 
@@ -105,8 +108,8 @@ dataset_size = int(len(udacity_dataset))
 del udacity_dataset
 split_point = int(dataset_size * 0.9)
 
-training_set = UD.UdacityDataset(csv_file='/home/norhan/outputUdacity/interpolated.csv',
-                             root_dir='/home/norhan/outputUdacity',
+training_set = UD.UdacityDataset(csv_file=f'{DATASET_PATH}/interpolated.csv',
+                             root_dir=DATASET_PATH,
                              transform=transforms.Compose([
                                  #transforms.Resize((224,224)),#(120,320)
                                  transforms.ToTensor(),
@@ -117,8 +120,8 @@ training_set = UD.UdacityDataset(csv_file='/home/norhan/outputUdacity/interpolat
                              optical_flow=parameters.optical_flow,
                              select_camera='center_camera',
                              select_range=(0,split_point))
-validation_set = UD.UdacityDataset(csv_file='/home/norhan/outputUdacity/interpolated.csv',
-                             root_dir='/home/norhan/outputUdacity',
+validation_set = UD.UdacityDataset(csv_file=f'{DATASET_PATH}/interpolated.csv',
+                             root_dir=DATASET_PATH,
                              transform=transforms.Compose([
                                 # transforms.Resize((224,224)),
                                  transforms.ToTensor(),
