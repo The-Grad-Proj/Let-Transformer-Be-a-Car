@@ -196,7 +196,7 @@ for epoch in range(last_epoch, min(parameters.epochs, last_epoch + experiment_ep
     print(f"Epoch {epoch} Training Loss: Angle = {train_angle_losses.avg}, Speed = {train_speed_losses.avg}")
     last_epoch_saved = epoch
 
-    # Save model after every epoch
+    # Save model after every 10 epochs
     if (epoch + 1) % 10 == 0:
         save_path = f'saved_models/{parameters.model_name}/epoch_{epoch + 1}.tar'
         torch.save({
