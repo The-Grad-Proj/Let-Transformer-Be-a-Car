@@ -21,6 +21,56 @@ from model.LSTM import SequenceModel
 import wandb
 import os
 # noinspection PyAttributeOutsideInit
+
+def load_model(model_path, default_parameters):
+    if os.path.exists(model_path):
+        checkpoint = torch.load(model_path)
+        parameters = checkpoint['parameters']
+        if parameters.model_name == 'LSTM':
+            model_object = SequenceModel
+        elif parameters.model_name == 'MotionTransformer' :
+            model_object = MotionTransformer
+        elif parameters.model_name == 'SimpleTransformer' :
+            model_object = SimpleTransformer
+        else:
+            raise KeyError("Unknown Architecture")
+        network = model_object(parameters.seq_len)
+        network.load_state_dict(checkpoint['model_state_dict'])
+        optimizer = optim.Adam(network.parameters(), lr=parameters.learning_rate, betas=(0.9, 0.999), eps=1e-08)
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        last_epoch = checkpoint['epoch']
+    else:
+        parameters = default_parameters
+        if parameters.model_name == 'LSTM':
+            model_object = SequenceModel
+        elif parameters.model_name == 'MotionTransformer' :
+            model_object = MotionTransformer
+        elif parameters.model_name == 'SimpleTransformer' :
+            model_object = SimpleTransformer
+        else:
+            raise KeyError("Unknown Architecture")
+        network = model_object(parameters.seq_len)
+        optimizer = optim.Adam(network.parameters(), lr=parameters.learning_rate, betas=(0.9, 0.999), eps=1e-08)
+        last_epoch = 0
+
+    return network, optimizer, parameters, last_epoch
+
+# Load parameters if available else use default
+default_parameters = edict(
+    learning_rate = 0.0001,
+    batch_size = 13,
+    seq_len = 5,
+    num_workers = 8,
+    model_name = 'MotionTransformer',
+    normalization = ([0.485, 0.456, 0.406],
+                    [0.229, 0.224, 0.225]),
+    image_size=(224, 224),
+    epochs=161,
+    all_frames=False,
+    optical_flow=True
+)
+
+
 class AverageMeter(object):
     """Computes and stores the average and current value"""
 
@@ -38,40 +88,19 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
-device = torch.device("cuda")
 
-parameters = edict(
-    learning_rate = 0.0001,
-    batch_size = 13,
-    seq_len = 5,
-    num_workers = 8,
-    model_name = 'MotionTransformer',
-    normalization = ([0.485, 0.456, 0.406],
-                    [0.229, 0.224, 0.225]),
-    image_size=(224, 224),
-    epochs=161,
-    all_frames=False,
-    optical_flow=True
-)
-if not os.path.exists( f'saved_models/{parameters.model_name}'):
-    os.makedirs(f'saved_models/{parameters.model_name}')
-if parameters.model_name == 'LSTM':
-    model_object = SequenceModel
-elif parameters.model_name == 'MotionTransformer' :
-    model_object = MotionTransformer
-elif parameters.model_name == 'SimpleTransformer' :
-    model_object = SimpleTransformer
-else:
-    raise KeyError("Unknown Architecture")
-    
-network = model_object(parameters.seq_len) 
+device = torch.device("cuda")
+model_path = f"saved_models/{default_parameters.model_name}/last_epoch.tar" # Change this to the path of the model you want to resume training from
+network, optimizer, parameters, last_epoch = load_model(model_path)
 network.to(device)
+
 wandb.init(config=parameters, project='self-driving-car')
 wandb.watch(network)
-optimizer = optim.Adam(network.parameters(),lr = parameters.learning_rate,betas=(0.9, 0.999), eps=1e-08)
 
-udacity_dataset = UD.UdacityDataset(csv_file='/home/chingis/self-driving-car/output/interpolated.csv',
-                             root_dir='/home/chingis/self-driving-car/output/',
+DATASET_PATH = '/home/norhan/outputUdacity'
+
+udacity_dataset = UD.UdacityDataset(csv_file=f'{DATASET_PATH}/interpolated.csv',
+                             root_dir=DATASET_PATH,
                              transform=transforms.Compose([transforms.ToTensor()]),
                              select_camera='center_camera')
 
@@ -79,8 +108,8 @@ dataset_size = int(len(udacity_dataset))
 del udacity_dataset
 split_point = int(dataset_size * 0.9)
 
-training_set = UD.UdacityDataset(csv_file='/home/chingis/self-driving-car/output/interpolated.csv',
-                             root_dir='/home/chingis/self-driving-car/output/',
+training_set = UD.UdacityDataset(csv_file=f'{DATASET_PATH}/interpolated.csv',
+                             root_dir=DATASET_PATH,
                              transform=transforms.Compose([
                                  #transforms.Resize((224,224)),#(120,320)
                                  transforms.ToTensor(),
@@ -91,8 +120,8 @@ training_set = UD.UdacityDataset(csv_file='/home/chingis/self-driving-car/output
                              optical_flow=parameters.optical_flow,
                              select_camera='center_camera',
                              select_range=(0,split_point))
-validation_set = UD.UdacityDataset(csv_file='/home/chingis/self-driving-car/output/interpolated.csv',
-                             root_dir='/home/chingis/self-driving-car/output/',
+validation_set = UD.UdacityDataset(csv_file=f'{DATASET_PATH}/interpolated.csv',
+                             root_dir=DATASET_PATH,
                              transform=transforms.Compose([
                                 # transforms.Resize((224,224)),
                                  transforms.ToTensor(),
@@ -125,13 +154,18 @@ def adjust_learning_rate(optimizer, epoch):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
-for epoch in range(parameters.epochs):
+experiment_epochs = 40
+last_epoch_saved = None
+
+
+# Training Loop
+for epoch in range(last_epoch, min(parameters.epochs, last_epoch + experiment_epochs)):
     train_angle_losses = AverageMeter()
     train_speed_losses = AverageMeter()
-    torch.save(network.state_dict(), f'saved_models/{parameters.model_name}/epoch.tar')
+    
     network.train()
     adjust_learning_rate(optimizer, epoch)
-    # Calculation on Training Loss
+
     for training_sample in tqdm(training_loader):
         param_values = [v for v in training_sample.values()]
         if parameters.optical_flow:
@@ -140,13 +174,13 @@ for epoch in range(parameters.epochs):
             speed = speed.float().reshape(-1, 1).to(device)
         else:
             image, angle = param_values
-        cur_bn = image.shape[0]
+
         loss = 0
         image = image.to(device)
         if parameters.optical_flow:
-            angle_hat, speed_hat = network(image, optical)  
+            angle_hat, speed_hat = network(image, optical)
             speed_hat = speed_hat.reshape(-1, 1)
-            training_loss_speed = speed_criterion(speed_hat,speed)
+            training_loss_speed = speed_criterion(speed_hat, speed)
             loss += training_loss_speed
             train_speed_losses.update(training_loss_speed.item())
         else:
@@ -154,7 +188,7 @@ for epoch in range(parameters.epochs):
 
         angle_hat = angle_hat.reshape(-1, 1)
         angle = angle.float().reshape(-1, 1).to(device)
-        training_loss_angle = torch.sqrt(criterion(angle_hat,angle) + 1e-6)
+        training_loss_angle = torch.sqrt(criterion(angle_hat, angle) + 1e-6)
         loss += training_loss_angle
 
         train_angle_losses.update(training_loss_angle.item())
@@ -162,47 +196,73 @@ for epoch in range(parameters.epochs):
         loss.backward()
         optimizer.step()
 
-    
-    print("Done")
-    report = {}
+    print(f"Epoch {epoch} Training Loss: Angle = {train_angle_losses.avg}, Speed = {train_speed_losses.avg}")
+    last_epoch_saved = epoch
+
+    # Save model after every 10 epochs
+    if (epoch + 1) % 10 == 0:
+        save_path = f'saved_models/{parameters.model_name}/epoch_{epoch + 1}.tar'
+        torch.save({
+            'epoch': epoch + 1,
+            'model_state_dict': network.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'parameters': dict(parameters)  # Save parameters for reference
+        }, save_path)
+
+    # Validation (if applicable)
     if split_point != dataset_size:
         network.eval()
         val_speed_losses = AverageMeter()
         val_angle_losses = AverageMeter()
-        with torch.no_grad():    
-            for Validation_sample in tqdm(validation_loader):
-                param_values = [v for v in Validation_sample.values()]
+        with torch.no_grad():
+            for validation_sample in tqdm(validation_loader):
+                param_values = [v for v in validation_sample.values()]
                 if parameters.optical_flow:
                     image, angle, optical, speed = param_values
                     optical = optical.to(device)
                     speed = speed.float().reshape(-1, 1).to(device)
                 else:
                     image, angle = param_values
-                cur_bn = image.shape[0]
+
                 loss = 0
                 image = image.to(device)
-                #optical = optical.to(device)
                 if parameters.optical_flow:
-                    angle_hat, speed_hat = network(image, optical)  
+                    angle_hat, speed_hat = network(image, optical)
                     speed_hat = speed_hat.reshape(-1, 1)
-                    validation_loss_speed = speed_criterion(speed_hat,speed)
+                    validation_loss_speed = speed_criterion(speed_hat, speed)
                     loss += validation_loss_speed
                     val_speed_losses.update(validation_loss_speed.item())
                 else:
                     angle_hat = network(image)
                 angle_hat = angle_hat.reshape(-1, 1)
                 angle = angle.float().reshape(-1, 1).to(device)
-    
-                validation_loss_angle = torch.sqrt(criterion(angle_hat,angle) + 1e-6)
+
+                validation_loss_angle = torch.sqrt(criterion(angle_hat, angle) + 1e-6)
                 loss += validation_loss_angle
-    
+
                 val_angle_losses.update(validation_loss_angle.item())
-        report['val_loss'] = val_angle_losses.avg
-    report['training_loss'] = train_angle_losses.avg
+
+        print(f"Epoch {epoch} Validation Loss: Angle = {val_angle_losses.avg}, Speed = {val_speed_losses.avg}")
+
+    # Log results to WandB
+    report = {
+        'training_angle_loss': train_angle_losses.avg,
+        'epoch': epoch,
+    }
     if parameters.optical_flow:
         report['training_speed_loss'] = train_speed_losses.avg
         if split_point != dataset_size:
-            report['validation_speed_loss'] = val_speed_losses.avg    
+            report['validation_angle_loss'] = val_angle_losses.avg
+            report['validation_speed_loss'] = val_speed_losses.avg
 
     wandb.log(report)
-    
+
+# Save model after the last epoch
+if last_epoch_saved is not None:
+    save_path = f'saved_models/{parameters.model_name}/last_epoch_{last_epoch_saved + 1}.tar'
+    torch.save({
+        'epoch': last_epoch_saved + 1,
+        'model_state_dict': network.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'parameters': dict(parameters)  # Save parameters for reference
+    }, save_path)
