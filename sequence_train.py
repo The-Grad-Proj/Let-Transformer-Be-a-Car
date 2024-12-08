@@ -20,12 +20,14 @@ from model.SimpleTransformer import SimpleTransformer
 from model.LSTM import SequenceModel
 import wandb
 import os
+import re
 # noinspection PyAttributeOutsideInit
 
-def load_model(model_path, default_parameters):
+def load_model(model_path, default_parameters, device="cpu"):
     if os.path.exists(model_path):
         checkpoint = torch.load(model_path)
-        parameters = checkpoint['parameters']
+        parameters = edict(checkpoint['parameters'])
+        print(f"Loading Model with paramaters:{parameters}")
         if parameters.model_name == 'LSTM':
             model_object = SequenceModel
         elif parameters.model_name == 'MotionTransformer' :
@@ -38,6 +40,10 @@ def load_model(model_path, default_parameters):
         network.load_state_dict(checkpoint['model_state_dict'])
         optimizer = optim.Adam(network.parameters(), lr=parameters.learning_rate, betas=(0.9, 0.999), eps=1e-08)
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        for state in optimizer.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to(device)
         last_epoch = checkpoint['epoch']
     else:
         parameters = default_parameters
@@ -89,9 +95,40 @@ class AverageMeter(object):
         self.count += n
         self.avg = self.sum / self.count
 
+# Directory containing the saved models
+data_dir = "/kaggle/input/commaai-training" # Change this to the directory containing the saved models
+model_dir = os.path.join(data_dir, "MotionTransformer")
+
+# Get the file with the highest epoch number
+def get_latest_model_path(directory, base_filename="last_epoch"):
+    highest_epoch = -1
+    latest_file = None
+    
+    # Iterate through files in the directory
+    for file_name in os.listdir(directory):
+        # Match the pattern: last_epoch_number.tar
+        match = re.match(f"{base_filename}_(\\d+)\\.tar", file_name)
+        if match:
+            epoch = int(match.group(1))
+            if epoch > highest_epoch:
+                highest_epoch = epoch
+                latest_file = file_name
+    
+    if latest_file:
+        return os.path.join(directory, latest_file)
+    else:
+        raise FileNotFoundError(f"No files matching '{base_filename}_<number>.tar' found in '{directory}'.")
+
+# Get the path of the latest model
+try:
+    model_path = get_latest_model_path(model_dir)
+    print(f"Latest model path: {model_path}")
+except FileNotFoundError as e:
+    model_path = ""
+
+# Load the model
 device = torch.device("cuda")
-model_path = f"saved_models/{default_parameters.model_name}/last_epoch.tar" # Change this to the path of the model you want to resume training from
-network, optimizer, parameters, last_epoch = load_model(model_path)
+network, optimizer, parameters, last_epoch = load_model(model_path, default_parameters, device)
 network.to(device)
 
 wandb.init(config=parameters, project='self-driving-car')
