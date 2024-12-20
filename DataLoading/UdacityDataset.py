@@ -9,6 +9,9 @@ import matplotlib.pyplot as plt
 import cv2
 import os
 import numpy as np
+import sys
+sys.path.append('core')
+from raft import RAFT
 
 # defining customized Dataset class for Udacity
 from .aug_utils import apply_augs
@@ -22,6 +25,9 @@ import random
 class UdacityDataset(Dataset):
     def __init__(self, csv_file, root_dir, transform=None, select_camera=None, slice_frames=None, select_ratio=1.0, select_range=None, optical_flow=True, seq_len=0, img_size=(224, 224)):
         
+        # Load raft model
+        pass
+
         assert select_ratio >= -1.0 and select_ratio <= 1.0 # positive: select to ratio from beginning, negative: select to ration counting from the end
         self.seq_len = seq_len
         camera_csv = pd.read_csv(csv_file)
@@ -96,16 +102,16 @@ class UdacityDataset(Dataset):
                 prev = cv2.cvtColor(original_img, cv2.COLOR_RGB2GRAY)
             cur = cv2.cvtColor(original_img, cv2.COLOR_RGB2GRAY)
             # Use Hue, Saturation, Value colour model
-            flow = cv2.calcOpticalFlowFarneback(prev, cur, None, 0.5, 3, 15, 3, 5, 1.2, 0)
-            hsv = np.zeros(original_img.shape, dtype=np.uint8)
-            hsv[..., 1] = 255
+            # flow = cv2.calcOpticalFlowFarneback(prev, cur, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+            # hsv = np.zeros(original_img.shape, dtype=np.uint8)
+            # hsv[..., 1] = 255
             
-            mag, ang = cv2.cartToPolar(flow[..., 0], flow[..., 1])
-            hsv[..., 0] = ang * 180 / np.pi / 2
-            hsv[..., 2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)
-            optical_rgb = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
-            optical_rgb, _ = apply_augs(optical_rgb, 0, augs, optical=True)
-            optical_rgb = self.transform(cv2.resize(optical_rgb, tuple(self.img_size)))
+            # mag, ang = cv2.cartToPolar(flow[..., 0], flow[..., 1])
+            # hsv[..., 0] = ang * 180 / np.pi / 2
+            # hsv[..., 2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)
+            # optical_rgb = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+            # optical_rgb, _ = apply_augs(optical_rgb, 0, augs, optical=True)
+            # optical_rgb = self.transform(cv2.resize(optical_rgb, tuple(self.img_size)))
             del original_img
             if augs['flip']:
                 image_transformed = torch.fliplr(image_transformed)
