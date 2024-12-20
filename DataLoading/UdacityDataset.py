@@ -19,7 +19,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader, Sampler
 from torchvision import transforms, utils
 import random
-
+import torch.nn.functional as F
 
 
 class UdacityDataset(Dataset):
@@ -27,6 +27,15 @@ class UdacityDataset(Dataset):
         
         # Load raft model
         pass
+
+        #Place holder
+        flow_final = output['flow'][-1]  # shape [B, 2, H, W]
+        flow_2d = flow_final[0]         # remove batch, now [2, H, W]
+        # Create a magnitude channel
+        flow_mag = torch.sqrt(flow_2d[0]**2 + flow_2d[1]**2).unsqueeze(0)  # [1, H, W]
+        flow_3d = torch.cat([flow_2d, flow_mag], dim=0)                    # [3, H, W]
+        flow_3d = F.interpolate(flow_3d.unsqueeze(0), size=(224, 224), mode='bilinear', align_corners=False)
+        flow_3d = flow_3d.squeeze(0)  # final shape: [3, 224, 224]
 
         assert select_ratio >= -1.0 and select_ratio <= 1.0 # positive: select to ratio from beginning, negative: select to ration counting from the end
         self.seq_len = seq_len
