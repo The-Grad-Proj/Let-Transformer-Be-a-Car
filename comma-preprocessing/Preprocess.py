@@ -159,7 +159,7 @@ def write_to_csv(csv_file_path: str, frame_ID: str, angle: float) -> None:
 
 def main():
     # Path to the parent directory where the main folders are located
-    parent_dir = r'D:\Mechatronics\Graduation Project\Let-Transformer-Be-a-Car\Example'
+    chunks_dir = r'D:\Mechatronics\Graduation Project\Let-Transformer-Be-a-Car\Example'
 
     # User input for the starting and ending index of nested folders to process
     start_index = int(input("Enter the starting index of the nested folders to process: "))
@@ -180,14 +180,21 @@ def main():
     total_nested_folders = []
 
     # Gather all nested folders across main folders
-    for main_folder in os.listdir(parent_dir):
-        main_folder_path = os.path.join(parent_dir, main_folder)
-        if not os.path.isdir(main_folder_path):
+    for chunk in os.listdir(chunks_dir):
+        parent_dir = os.path.join(chunks_dir, chunk)
+        if not os.path.isdir(parent_dir):
+            continue
+        if chunk == "Chunk_1":
             continue
 
-        nested_folders = os.listdir(main_folder_path)
-        for nested_folder in nested_folders:
-            total_nested_folders.append((main_folder_path, nested_folder))
+        for main_folder in os.listdir(parent_dir):
+            main_folder_path = os.path.join(parent_dir, main_folder)
+            if not os.path.isdir(main_folder_path):
+                continue
+
+            nested_folders = os.listdir(main_folder_path)
+            for nested_folder in nested_folders:
+                total_nested_folders.append((main_folder_path, nested_folder))
 
     # Process the nested folders within the specified range
     for i in range(start_index, min(end_index, len(total_nested_folders))):
@@ -199,6 +206,7 @@ def main():
             global_max_angle = max(global_max_angle, max_angle)
 
         folders_processed += 1
+        print(f"{i} folders from {min(end_index, len(total_nested_folders))} are processed.")
 
     # Print the global minimum and maximum steering angles
     if global_min_angle != float('inf') and global_max_angle != float('-inf'):
