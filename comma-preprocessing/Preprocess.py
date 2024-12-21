@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import os
 import csv
+from process_video import process_video
 
 def create_output_directories(output_frames_dir: str) -> None:
     """
@@ -122,39 +123,39 @@ def write_to_csv(csv_file_path: str, frame_ID: str, angle: float) -> None:
         csv_writer = csv.writer(f)
         csv_writer.writerow([frame_ID, angle])
 
-def process_video(main_folder: str, nested_folder: str, output_frames_dir: str, csv_file_path: str) -> tuple[float, float] | tuple[None, None]:
-    """
-    Process the video to extract frames and save them along with steering angles.
+# def process_video(main_folder: str, nested_folder: str, output_frames_dir: str, csv_file_path: str) -> tuple[float, float] | tuple[None, None]:
+#     """
+#     Process the video to extract frames and save them along with steering angles.
 
-    Args:
-        main_folder (str): Path to the main folder containing the video and logs.
-        nested_folder (str): Name of the nested folder to process.
-        output_frames_dir (str): Path to the directory where frames will be saved.
-        csv_file_path (str): Path to the CSV file where data will be logged.
+#     Args:
+#         main_folder (str): Path to the main folder containing the video and logs.
+#         nested_folder (str): Name of the nested folder to process.
+#         output_frames_dir (str): Path to the directory where frames will be saved.
+#         csv_file_path (str): Path to the CSV file where data will be logged.
 
-    Returns:
-        tuple[float, float] | tuple[None, None]: Minimum and maximum steering angles,
-        or (None, None) if processing fails.
-    """
-    nested_folder_path, video_file = get_processed_log_paths(main_folder, nested_folder)
+#     Returns:
+#         tuple[float, float] | tuple[None, None]: Minimum and maximum steering angles,
+#         or (None, None) if processing fails.
+#     """
+#     nested_folder_path, video_file = get_processed_log_paths(main_folder, nested_folder)
 
-    if not os.path.exists(nested_folder_path) or not os.path.isfile(video_file):
-        print(f"Skipping {nested_folder}, missing processed log directory or video file.")
-        return None, None
+#     if not os.path.exists(nested_folder_path) or not os.path.isfile(video_file):
+#         print(f"Skipping {nested_folder}, missing processed log directory or video file.")
+#         return None, None
 
-    steering_angle = load_steering_angles(nested_folder_path)
-    if steering_angle is None:
-        return None, None
+#     steering_angle = load_steering_angles(nested_folder_path)
+#     if steering_angle is None:
+#         return None, None
 
-    min_angle = float('inf')
-    max_angle = float('-inf')
+#     min_angle = float('inf')
+#     max_angle = float('-inf')
 
-    for frame_ID, angle in extract_frames_from_video(video_file, steering_angle, output_frames_dir, main_folder, nested_folder):
-        write_to_csv(csv_file_path, frame_ID, angle)
-        min_angle = min(min_angle, angle)
-        max_angle = max(max_angle, angle)
+#     for frame_ID, angle in extract_frames_from_video(video_file, steering_angle, output_frames_dir, main_folder, nested_folder):
+#         write_to_csv(csv_file_path, frame_ID, angle)
+#         min_angle = min(min_angle, angle)
+#         max_angle = max(max_angle, angle)
 
-    return min_angle, max_angle
+#     return min_angle, max_angle
 
 def main():
     # Path to the parent directory where the main folders are located
@@ -166,11 +167,11 @@ def main():
 
     # Path to save all preprocessed frames directly in this directory
     output_frames_dir = 'preprocessed_frames'
-    create_output_directories(output_frames_dir)
+    # create_output_directories(output_frames_dir)
 
     # Path for the combined CSV file
     csv_file_path = 'steering_data_combined.csv'
-    initialize_csv(csv_file_path)
+    # initialize_csv(csv_file_path)
 
     # Variables to keep track of global min and max steering angles
     global_min_angle = float('inf')
