@@ -33,7 +33,7 @@ import os
 import re
 
 
-
+parameters = None
 # noinspection PyAttributeOutsideInit
 
 def collate_fn(batch):
@@ -120,6 +120,7 @@ def get_latest_model_path(directory, base_filename="last_epoch"):
 
 
 def adjust_learning_rate(optimizer, epoch):
+    global parameters
     """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
     lr = parameters.learning_rate
     if epoch in [30, 90, 150]:
@@ -132,6 +133,7 @@ def adjust_learning_rate(optimizer, epoch):
 
 
 def main():
+    global parameters
     # Load parameters if available else use default
     default_parameters = edict(
         learning_rate = 0.0001,
