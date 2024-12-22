@@ -5,8 +5,19 @@ Created on Sat Nov  6 12:24:40 2021
 
 @author: chingis
 """
+
+
+
 import torch.multiprocessing as mp
-mp.set_start_method('spawn')
+try:
+   mp.set_start_method('spawn', force=True)
+   print("spawned")
+except RuntimeError:
+   pass
+
+
+
+
 
 from easydict import EasyDict as edict
 from tqdm import tqdm
