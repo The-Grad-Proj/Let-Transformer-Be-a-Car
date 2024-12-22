@@ -11,7 +11,8 @@ import os
 import numpy as np
 import sys
 sys.path.append('core')
-from raft import RAFT
+from core.raft import RAFT
+from core.utils.utils import load_ckpt
 
 # defining customized Dataset class for Udacity
 from .aug_utils import apply_augs
@@ -21,21 +22,54 @@ from torchvision import transforms, utils
 import random
 import torch.nn.functional as F
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+class Args:
+    name = 'kitti-S'
+    dataset = 'kitti'
+    gpus = [0, 1, 2, 3, 4, 5, 6, 7]
+    use_var = True
+    var_min = 0
+    var_max = 10
+    pretrain = 'resnet18'
+    initial_dim = 64
+    block_dims = [64, 128, 256]
+    radius = 4
+    dim = 128
+    num_blocks = 2
+    iters = 4
+    image_size = [432, 960]
+    scale = 0
+    batch_size = 16
+    epsilon = 1e-8
+    lr = 0.0001
+    wdecay = 1e-5
+    dropout = 0
+    clip = 1.0
+    gamma = 0.85
+    num_steps = 10000
+    restore_ckpt = None
+    coarse_config = None
+    cfg = 'raft/kitti-S.json'
+    path = 'raft/Tartan480x640-S.pth'
+    url = None
+    device = device
+
+def load_pretrained_model():
+    args = Args()
+    model = RAFT(args)
+    load_ckpt(model, args.path)
+    device = torch.device(args.device)
+    model = model.to(device)
+    model.eval()
+    return model
+
 
 class UdacityDataset(Dataset):
     def __init__(self, csv_file, root_dir, transform=None, select_camera=None, slice_frames=None, select_ratio=1.0, select_range=None, optical_flow=True, seq_len=0, img_size=(224, 224)):
         
         # Load raft model
-        pass
-
-        #Place holder
-        flow_final = output['flow'][-1]  # shape [B, 2, H, W]
-        flow_2d = flow_final[0]         # remove batch, now [2, H, W]
-        # Create a magnitude channel
-        flow_mag = torch.sqrt(flow_2d[0]**2 + flow_2d[1]**2).unsqueeze(0)  # [1, H, W]
-        flow_3d = torch.cat([flow_2d, flow_mag], dim=0)                    # [3, H, W]
-        flow_3d = F.interpolate(flow_3d.unsqueeze(0), size=(224, 224), mode='bilinear', align_corners=False)
-        flow_3d = flow_3d.squeeze(0)  # final shape: [3, 224, 224]
+        self.model = load_pretrained_model()
 
         assert select_ratio >= -1.0 and select_ratio <= 1.0 # positive: select to ratio from beginning, negative: select to ration counting from the end
         self.seq_len = seq_len
@@ -110,6 +144,25 @@ class UdacityDataset(Dataset):
             else:
                 prev = cv2.cvtColor(original_img, cv2.COLOR_RGB2GRAY)
             cur = cv2.cvtColor(original_img, cv2.COLOR_RGB2GRAY)
+
+            # Convert to tensors and add batch and channel dimensions
+            prev = torch.tensor(prev, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(device)
+            cur = torch.tensor(cur, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(device)
+            
+            output = self.model(prev, cur, iters=4)
+            flow_final = output['flow'][-1]  # shape [B, 2, H, W]
+            flow_2d = flow_final[0]         # remove batch, now [2, H, W]
+            # Create a magnitude channel
+            flow_mag = torch.sqrt(flow_2d[0]**2 + flow_2d[1]**2).unsqueeze(0)  # [1, H, W]
+            flow_3d = torch.cat([flow_2d, flow_mag], dim=0)                    # [3, H, W]
+            flow_3d = F.interpolate(flow_3d.unsqueeze(0), size=(224, 224), mode='bilinear', align_corners=False)
+            flow_3d = flow_3d.squeeze(0)  # final shape: [3, 224, 224]
+
+            # Convert to numpy
+            optical_rgb = flow_3d.cpu().numpy().detach().transpose(1, 2, 0) # [224, 224, 3]
+            optical_rgb = cv2.normalize(optical_rgb, None, 0, 255, cv2.NORM_MINMAX)
+            optical_rgb = optical_rgb.astype(np.uint8)
+            
             # Use Hue, Saturation, Value colour model
             # flow = cv2.calcOpticalFlowFarneback(prev, cur, None, 0.5, 3, 15, 3, 5, 1.2, 0)
             # hsv = np.zeros(original_img.shape, dtype=np.uint8)
@@ -119,8 +172,9 @@ class UdacityDataset(Dataset):
             # hsv[..., 0] = ang * 180 / np.pi / 2
             # hsv[..., 2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)
             # optical_rgb = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
-            # optical_rgb, _ = apply_augs(optical_rgb, 0, augs, optical=True)
-            # optical_rgb = self.transform(cv2.resize(optical_rgb, tuple(self.img_size)))
+
+            optical_rgb, _ = apply_augs(optical_rgb, 0, augs, optical=True)
+            optical_rgb = self.transform(cv2.resize(optical_rgb, tuple(self.img_size)))
             del original_img
             if augs['flip']:
                 image_transformed = torch.fliplr(image_transformed)

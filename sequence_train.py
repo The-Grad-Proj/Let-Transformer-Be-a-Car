@@ -5,6 +5,8 @@ Created on Sat Nov  6 12:24:40 2021
 
 @author: chingis
 """
+import torch.multiprocessing as mp
+mp.set_start_method('spawn')
 
 from easydict import EasyDict as edict
 from tqdm import tqdm
@@ -18,10 +20,14 @@ from DataLoading import ConsecutiveBatchSampler as CB
 from model.MotionTransformer import MotionTransformer
 from model.SimpleTransformer import SimpleTransformer
 from model.LSTM import SequenceModel
-import wandb
+# import wandb
 import os
 import re
+
 # noinspection PyAttributeOutsideInit
+
+def collate_fn(batch):
+    return batch[0]
 
 def load_model(model_path, default_parameters, device="cpu"):
     if os.path.exists(model_path):
@@ -131,10 +137,10 @@ device = torch.device("cuda")
 network, optimizer, parameters, last_epoch = load_model(model_path, default_parameters, device)
 network.to(device)
 
-wandb.init(config=parameters, project='self-driving-car')
-wandb.watch(network)
+# wandb.init(config=parameters, project='self-driving-car')
+# wandb.watch(network)
 
-DATASET_PATH = '/home/norhan/outputUdacity'
+DATASET_PATH = '/home/ibraa04/grad_project/output'
 
 udacity_dataset = UD.UdacityDataset(csv_file=f'{DATASET_PATH}/interpolated.csv',
                              root_dir=DATASET_PATH,
@@ -172,10 +178,10 @@ validation_set = UD.UdacityDataset(csv_file=f'{DATASET_PATH}/interpolated.csv',
 
 
 training_cbs = CB.ConsecutiveBatchSampler(data_source=training_set, batch_size=parameters.batch_size,use_all_frames=parameters.all_frames, shuffle=True, drop_last=False, seq_len=parameters.seq_len)
-training_loader = DataLoader(training_set, sampler=training_cbs, num_workers=parameters.num_workers, collate_fn=(lambda x: x[0]))
+training_loader = DataLoader(training_set, sampler=training_cbs, num_workers=parameters.num_workers, collate_fn=collate_fn)
 
 validation_cbs = CB.ConsecutiveBatchSampler(data_source=validation_set, batch_size=parameters.batch_size, use_all_frames=False, shuffle=False, drop_last=False, seq_len=parameters.seq_len)
-validation_loader = DataLoader(validation_set, sampler=validation_cbs, num_workers=parameters.num_workers, collate_fn=(lambda x: x[0]))
+validation_loader = DataLoader(validation_set, sampler=validation_cbs, num_workers=parameters.num_workers, collate_fn=collate_fn)
 criterion = torch.nn.MSELoss()
 criterion.to(device)
 speed_criterion =  torch.nn.SmoothL1Loss()
@@ -291,8 +297,8 @@ for epoch in range(last_epoch, min(parameters.epochs, last_epoch + experiment_ep
         if split_point != dataset_size:
             report['validation_angle_loss'] = val_angle_losses.avg
             report['validation_speed_loss'] = val_speed_losses.avg
-
-    wandb.log(report)
+    print(report)
+    # wandb.log(report)
 
 # Save model after the last epoch
 if last_epoch_saved is not None:
