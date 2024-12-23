@@ -111,12 +111,12 @@ def main():
 
                 optical_rgb= calculate_opticalFlow(prev, cur)
 
-                # Save optical flow map
+                # Save optical flow image
                 output_file_name = f"{previous_file_name}_optical.png"
                 output_path = os.path.join(output_folder, output_file_name)
                 cv2.imwrite(output_path, optical_rgb)
 
-                print(f"Saved optical flow image: {output_path}")
+                print(f"Saved optical flow image: {output_file_name}")
 
 
 
