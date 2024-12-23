@@ -135,9 +135,6 @@ def adjust_learning_rate(optimizer, epoch):
 
 
 def main():
-    global parameters
-    torch.cuda.empty_cache()
-    
     # Load parameters if available else use default
     default_parameters = edict(
         learning_rate = 0.0001,
