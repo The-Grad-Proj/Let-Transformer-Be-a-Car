@@ -9,10 +9,6 @@ import matplotlib.pyplot as plt
 import cv2
 import os
 import numpy as np
-import sys
-sys.path.append('core')
-from core.raft import RAFT
-from core.utils.utils import load_ckpt
 
 # defining customized Dataset class for Udacity
 from .aug_utils import apply_augs
@@ -22,56 +18,9 @@ from torchvision import transforms, utils
 import random
 import torch.nn.functional as F
 
-
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-class Args:
-    name = 'kitti-S'
-    dataset = 'kitti'
-    gpus = [0, 1, 2, 3, 4, 5, 6, 7]
-    use_var = True
-    var_min = 0
-    var_max = 10
-    pretrain = 'resnet18'
-    initial_dim = 64
-    block_dims = [64, 128, 256]
-    radius = 4
-    dim = 128
-    num_blocks = 2
-    iters = 4
-    image_size = [432, 960]
-    scale = 0
-    batch_size = 16
-    epsilon = 1e-8
-    lr = 0.0001
-    wdecay = 1e-5
-    dropout = 0
-    clip = 1.0
-    gamma = 0.85
-    num_steps = 10000
-    restore_ckpt = None
-    coarse_config = None
-    cfg = 'raft/kitti-S.json'
-    path = 'raft/Tartan480x640-S.pth'
-    url = None
-    device = device
-
-def load_pretrained_model():
-    args = Args()
-    model = RAFT(args)
-    load_ckpt(model, args.path)
-    device = torch.device(args.device)
-    model = model.to(device)
-    model.eval()
-    return model
-
-
 class UdacityDataset(Dataset):
     def __init__(self, csv_file, root_dir, transform=None, select_camera=None, slice_frames=None, select_ratio=1.0, select_range=None, optical_flow=True, seq_len=0, img_size=(224, 224)):
         
-        # Load raft model
-        self.model = load_pretrained_model()
-
         assert select_ratio >= -1.0 and select_ratio <= 1.0 # positive: select to ratio from beginning, negative: select to ration counting from the end
         self.seq_len = seq_len
         camera_csv = pd.read_csv(csv_file)
@@ -117,11 +66,9 @@ class UdacityDataset(Dataset):
         path = os.path.join(self.root_dir, self.camera_csv['filename'].iloc[idx])
         image = cv2.imread(path)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        image = image[65:-25,:,:]
         original_img = image.copy()
-        # angle independent augs
-
-  
+        # angle independent aug
+    
         augs['random_brightness'] = random.uniform(0, 1) > 0.5 
         augs['random_shadow'] = random.uniform(0, 1) > 0.5
         augs['random_blur'] = random.uniform(0, 1) > 0.5
@@ -137,9 +84,9 @@ class UdacityDataset(Dataset):
 
         if self.optical_flow:
             if idx != 0:
-                path = os.path.join(self.root_dir, self.camera_csv['filename'].iloc[idx - 1])
-                
-            ## Import optical flow here 
+                optical_path = os.path.join(os.path.join(self.root_dir, 'optical_flow'), self.camera_csv['filename'].iloc[idx - 1])
+                optical_rgb = cv2.imread(optical_path)
+                optical_rgb = cv2.cvtColor(optical_rgb, cv2.COLOR_BGR2RGB)
 
             optical_rgb, _ = apply_augs(optical_rgb, 0, augs, optical=True)
             optical_rgb = self.transform(cv2.resize(optical_rgb, tuple(self.img_size)))

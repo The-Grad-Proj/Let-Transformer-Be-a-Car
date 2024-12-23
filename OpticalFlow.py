@@ -2,6 +2,7 @@ import sys
 sys.path.append('core')
 from core.raft import RAFT
 from core.utils.utils import load_ckpt
+
 import torch
 import torch.nn.functional as F
 import numpy as np
@@ -82,14 +83,17 @@ def calculate_opticalFlow(prev,cur):
 
 
 def main():
-
-    image_folder= "DataLoading\images"
-    output_folder= "DataLoading\opticalflow_output"
-    csv_file="DataLoading\interpolated.csv"
+    DATASET_PATH = "/home/ibraa04/grad_project/output"
+    output_folder= f"{DATASET_PATH}/optical_flow"
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+    
+    csv_file=f"{DATASET_PATH}/interpolated.csv"
     
     camera_csv=pd.read_csv(csv_file)
     
     camera_csv = camera_csv[camera_csv['frame_id']=="center_camera"] # Take only the rows with frame_id == center_camera
+    camera_csv = camera_csv.reset_index(drop=True) # Reset the index of the dataframe
     previous = None
     current = None  
 
@@ -100,8 +104,10 @@ def main():
         current_file_name = camera_csv.loc[current, 'filename']
         previous_file_name = camera_csv.loc[previous, 'filename'] if previous is not None else None
 
-        current_path= os.path.join(image_folder, current_file_name)
-        previous_path= os.path.join(image_folder, previous_file_name)
+        if previous_file_name is None:
+            continue
+        current_path= os.path.join(DATASET_PATH, current_file_name)
+        previous_path= os.path.join(DATASET_PATH, previous_file_name)
 
         cur= cv2.imread(current_path)
         prev= cv2.imread(previous_path)
@@ -109,10 +115,10 @@ def main():
         optical_rgb= calculate_opticalFlow(prev, cur)
 
         # Save optical flow image
-        output_file_name = f"{previous_file_name}_optical.png"
+        output_file_name = f"{os.path.splitext(current_file_name)[0]}_optical.jpg"
         output_path = os.path.join(output_folder, output_file_name)
         cv2.imwrite(output_path, optical_rgb)
-
+        # print(output_path)
         print(f"Saved optical flow image: {output_file_name}")
 
 

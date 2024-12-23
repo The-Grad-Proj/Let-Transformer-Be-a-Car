@@ -8,12 +8,12 @@ Created on Sat Nov  6 12:24:40 2021
 
 
 
-import torch.multiprocessing as mp
-try:
-   mp.set_start_method('spawn', force=True)
-   print("spawned")
-except RuntimeError:
-   pass
+# import torch.multiprocessing as mp
+# try:
+#    mp.set_start_method('spawn', force=True)
+#    print("spawned")
+# except RuntimeError:
+#    pass
 
 
 from easydict import EasyDict as edict
@@ -23,7 +23,7 @@ import torch
 from torch.utils.data import DataLoader
 from torchvision import transforms
 import torch.optim as optim
-from DataLoading import UdacityDataset as UD
+from DataLoading import UdacityDataset_new as UD
 from DataLoading import ConsecutiveBatchSampler as CB
 from model.MotionTransformer import MotionTransformer
 from model.SimpleTransformer import SimpleTransformer
@@ -135,12 +135,13 @@ def adjust_learning_rate(optimizer, epoch):
 
 
 def main():
+    global parameters
     # Load parameters if available else use default
     default_parameters = edict(
         learning_rate = 0.0001,
-        batch_size = 26,
+        batch_size = 13,
         seq_len = 5,
-        num_workers = 2,
+        num_workers = 8,
         model_name = 'MotionTransformer',
         normalization = ([0.485, 0.456, 0.406],
                         [0.229, 0.224, 0.225]),
@@ -165,9 +166,8 @@ def main():
     device = torch.device("cuda")
     network, optimizer, parameters, last_epoch = load_model(model_path, default_parameters, device)
     network.to(device)
+    
     # print(f"parameters are {parameters}")
-
-
     # wandb.init(config=parameters, project='self-driving-car')
     # wandb.watch(network)
 
