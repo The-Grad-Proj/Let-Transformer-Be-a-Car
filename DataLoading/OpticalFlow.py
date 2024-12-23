@@ -89,34 +89,31 @@ def main():
     
     camera_csv=pd.read_csv(csv_file)
     
-    # Iterate over csv file columns
-    if 'frame_id' in camera_csv.columns:
-        
-        previous = None  # Initialize previous as None before the loop
-        current = None  
+    camera_csv = camera_csv[camera_csv['frame_id']=="center_camera"] # Take only the rows with frame_id == center_camera
+    previous = None
+    current = None  
 
-        # Iterate in the rows of the selected column 
-        for index, row in camera_csv.iterrows():
-            if row['frame_id']=='center_camera':
-                previous= current
-                current= index
-                current_file_name = camera_csv.loc[current, 'filename']
-                previous_file_name = camera_csv.loc[previous, 'filename'] if previous is not None else None
+    # Iterate in the rows of the selected column 
+    for index, row in camera_csv.iterrows():
+        previous= current
+        current= index
+        current_file_name = camera_csv.loc[current, 'filename']
+        previous_file_name = camera_csv.loc[previous, 'filename'] if previous is not None else None
 
-                current_path= os.path.join(image_folder, current_file_name)
-                previous_path= os.path.join(image_folder, previous_file_name)
+        current_path= os.path.join(image_folder, current_file_name)
+        previous_path= os.path.join(image_folder, previous_file_name)
 
-                cur= cv2.imread(current_path)
-                prev= cv2.imread(previous_path)
+        cur= cv2.imread(current_path)
+        prev= cv2.imread(previous_path)
 
-                optical_rgb= calculate_opticalFlow(prev, cur)
+        optical_rgb= calculate_opticalFlow(prev, cur)
 
-                # Save optical flow image
-                output_file_name = f"{previous_file_name}_optical.png"
-                output_path = os.path.join(output_folder, output_file_name)
-                cv2.imwrite(output_path, optical_rgb)
+        # Save optical flow image
+        output_file_name = f"{previous_file_name}_optical.png"
+        output_path = os.path.join(output_folder, output_file_name)
+        cv2.imwrite(output_path, optical_rgb)
 
-                print(f"Saved optical flow image: {output_file_name}")
+        print(f"Saved optical flow image: {output_file_name}")
 
 
 
