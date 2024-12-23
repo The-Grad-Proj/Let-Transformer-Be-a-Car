@@ -140,14 +140,16 @@ class UdacityDataset(Dataset):
                 prev = cv2.imread(path)
                 prev = cv2.cvtColor(prev, cv2.COLOR_BGR2RGB)
                 prev = prev[65:-25,:,:]
-                prev = cv2.cvtColor(prev, cv2.COLOR_RGB2GRAY)
-            else:
-                prev = cv2.cvtColor(original_img, cv2.COLOR_RGB2GRAY)
-            cur = cv2.cvtColor(original_img, cv2.COLOR_RGB2GRAY)
+                # prev = cv2.cvtColor(prev, cv2.COLOR_RGB2GRAY)
+            # else:
+#                 prev = cv2.cvtColor(original_img, cv2.COLOR_RGB2GRAY)
+            cur = original_img
 
             # Convert to tensors and add batch and channel dimensions
-            prev = torch.tensor(prev, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(device)
-            cur = torch.tensor(cur, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(device)
+            prev = torch.tensor(prev, dtype=torch.float32).permute(2, 0, 1)
+            cur = torch.tensor(cur, dtype=torch.float32).permute(2, 0, 1)
+            prev = prev[None].to(device)
+            cur = cur[None].to(device)
             
             output = self.model(prev, cur, iters=4)
             flow_final = output['flow'][-1]  # shape [B, 2, H, W]
@@ -159,11 +161,12 @@ class UdacityDataset(Dataset):
             flow_3d = flow_3d.squeeze(0)  # final shape: [3, 224, 224]
 
             # Convert to numpy
-            optical_rgb = flow_3d.cpu().numpy().detach().transpose(1, 2, 0) # [224, 224, 3]
+            optical_rgb = flow_3d.detach().cpu().numpy().transpose(1, 2, 0) # [224, 224, 3]
             optical_rgb = cv2.normalize(optical_rgb, None, 0, 255, cv2.NORM_MINMAX)
             optical_rgb = optical_rgb.astype(np.uint8)
+            # print(f"My implementation is {optical_rgb.shape}")
             
-            # Use Hue, Saturation, Value colour model
+            # # Use Hue, Saturation, Value colour model
             # flow = cv2.calcOpticalFlowFarneback(prev, cur, None, 0.5, 3, 15, 3, 5, 1.2, 0)
             # hsv = np.zeros(original_img.shape, dtype=np.uint8)
             # hsv[..., 1] = 255
@@ -172,6 +175,7 @@ class UdacityDataset(Dataset):
             # hsv[..., 0] = ang * 180 / np.pi / 2
             # hsv[..., 2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)
             # optical_rgb = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+            # print(f"The original image shape is {optical_rgb.shape}")
 
             optical_rgb, _ = apply_augs(optical_rgb, 0, augs, optical=True)
             optical_rgb = self.transform(cv2.resize(optical_rgb, tuple(self.img_size)))
