@@ -64,7 +64,7 @@ def load_model(model_path, default_parameters, device="cpu"):
 # Load parameters if available else use default
 default_parameters = edict(
     learning_rate = 0.0001,
-    batch_size = 13,
+    batch_size = 26,
     seq_len = 5,
     num_workers = 8,
     model_name = 'MotionTransformer',
@@ -96,7 +96,7 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 # Directory containing the saved models
-data_dir = "/kaggle/input/commaai-training" # Change this to the directory containing the saved models
+data_dir = "saved_models" # Change this to the directory containing the saved models
 model_dir = os.path.join(data_dir, "MotionTransformer")
 
 # Get the file with the highest epoch number
@@ -131,21 +131,12 @@ device = torch.device("cuda")
 network, optimizer, parameters, last_epoch = load_model(model_path, default_parameters, device)
 network.to(device)
 
-wandb.init(config=parameters, project='self-driving-car')
+wandb.init(config=parameters, project='self-driving-car-commai')
 wandb.watch(network)
 
-DATASET_PATH = '/home/norhan/outputUdacity'
+DATASET_PATH = r'E:\\GradProject\\Output'
 
-udacity_dataset = UD.UdacityDataset(csv_file=f'{DATASET_PATH}/interpolated.csv',
-                             root_dir=DATASET_PATH,
-                             transform=transforms.Compose([transforms.ToTensor()]),
-                             select_camera='center_camera')
-
-dataset_size = int(len(udacity_dataset))
-del udacity_dataset
-split_point = int(dataset_size * 0.9)
-
-training_set = UD.UdacityDataset(csv_file=f'{DATASET_PATH}/interpolated.csv',
+training_set = UD.UdacityDataset(csv_file=fr'{DATASET_PATH}\\train_split.csv',
                              root_dir=DATASET_PATH,
                              transform=transforms.Compose([
                                  #transforms.Resize((224,224)),#(120,320)
@@ -156,8 +147,8 @@ training_set = UD.UdacityDataset(csv_file=f'{DATASET_PATH}/interpolated.csv',
                              seq_len=parameters.seq_len,
                              optical_flow=parameters.optical_flow,
                              select_camera='center_camera',
-                             select_range=(0,split_point))
-validation_set = UD.UdacityDataset(csv_file=f'{DATASET_PATH}/interpolated.csv',
+                             select_range=(0,218740))
+validation_set = UD.UdacityDataset(csv_file=fr'{DATASET_PATH}\\val_split.csv',
                              root_dir=DATASET_PATH,
                              transform=transforms.Compose([
                                 # transforms.Resize((224,224)),
@@ -168,7 +159,7 @@ validation_set = UD.UdacityDataset(csv_file=f'{DATASET_PATH}/interpolated.csv',
                              seq_len=parameters.seq_len,
                              optical_flow=parameters.optical_flow,
                              select_camera='center_camera',
-                             select_range=(split_point,dataset_size))
+                             select_range=(0,24305))
 
 
 training_cbs = CB.ConsecutiveBatchSampler(data_source=training_set, batch_size=parameters.batch_size,use_all_frames=parameters.all_frames, shuffle=True, drop_last=False, seq_len=parameters.seq_len)
@@ -238,7 +229,7 @@ for epoch in range(last_epoch, min(parameters.epochs, last_epoch + experiment_ep
 
     # Save model after every 10 epochs
     if (epoch + 1) % 10 == 0:
-        save_path = f'saved_models/{parameters.model_name}/epoch_{epoch + 1}.tar'
+        save_path = os.path.join('saved_models', parameters.model_name, f'last_epoch_{epoch + 1}.tar')
         torch.save({
             'epoch': epoch + 1,
             'model_state_dict': network.state_dict(),
@@ -247,39 +238,38 @@ for epoch in range(last_epoch, min(parameters.epochs, last_epoch + experiment_ep
         }, save_path)
 
     # Validation (if applicable)
-    if split_point != dataset_size:
-        network.eval()
-        val_speed_losses = AverageMeter()
-        val_angle_losses = AverageMeter()
-        with torch.no_grad():
-            for validation_sample in tqdm(validation_loader):
-                param_values = [v for v in validation_sample.values()]
-                if parameters.optical_flow:
-                    image, angle, optical, speed = param_values
-                    optical = optical.to(device)
-                    speed = speed.float().reshape(-1, 1).to(device)
-                else:
-                    image, angle = param_values
+    network.eval()
+    val_speed_losses = AverageMeter()
+    val_angle_losses = AverageMeter()
+    with torch.no_grad():
+        for validation_sample in tqdm(validation_loader):
+            param_values = [v for v in validation_sample.values()]
+            if parameters.optical_flow:
+                image, angle, optical, speed = param_values
+                optical = optical.to(device)
+                speed = speed.float().reshape(-1, 1).to(device)
+            else:
+                image, angle = param_values
 
-                loss = 0
-                image = image.to(device)
-                if parameters.optical_flow:
-                    angle_hat, speed_hat = network(image, optical)
-                    speed_hat = speed_hat.reshape(-1, 1)
-                    validation_loss_speed = speed_criterion(speed_hat, speed)
-                    loss += validation_loss_speed
-                    val_speed_losses.update(validation_loss_speed.item())
-                else:
-                    angle_hat = network(image)
-                angle_hat = angle_hat.reshape(-1, 1)
-                angle = angle.float().reshape(-1, 1).to(device)
+            loss = 0
+            image = image.to(device)
+            if parameters.optical_flow:
+                angle_hat, speed_hat = network(image, optical)
+                speed_hat = speed_hat.reshape(-1, 1)
+                validation_loss_speed = speed_criterion(speed_hat, speed)
+                loss += validation_loss_speed
+                val_speed_losses.update(validation_loss_speed.item())
+            else:
+                angle_hat = network(image)
+            angle_hat = angle_hat.reshape(-1, 1)
+            angle = angle.float().reshape(-1, 1).to(device)
 
-                validation_loss_angle = torch.sqrt(criterion(angle_hat, angle) + 1e-6)
-                loss += validation_loss_angle
+            validation_loss_angle = torch.sqrt(criterion(angle_hat, angle) + 1e-6)
+            loss += validation_loss_angle
 
-                val_angle_losses.update(validation_loss_angle.item())
+            val_angle_losses.update(validation_loss_angle.item())
 
-        print(f"Epoch {epoch} Validation Loss: Angle = {val_angle_losses.avg}, Speed = {val_speed_losses.avg}")
+    print(f"Epoch {epoch} Validation Loss: Angle = {val_angle_losses.avg}, Speed = {val_speed_losses.avg}")
 
     # Log results to WandB
     report = {
@@ -288,15 +278,14 @@ for epoch in range(last_epoch, min(parameters.epochs, last_epoch + experiment_ep
     }
     if parameters.optical_flow:
         report['training_speed_loss'] = train_speed_losses.avg
-        if split_point != dataset_size:
-            report['validation_angle_loss'] = val_angle_losses.avg
-            report['validation_speed_loss'] = val_speed_losses.avg
+        report['validation_angle_loss'] = val_angle_losses.avg
+        report['validation_speed_loss'] = val_speed_losses.avg
 
     wandb.log(report)
 
 # Save model after the last epoch
 if last_epoch_saved is not None:
-    save_path = f'saved_models/{parameters.model_name}/last_epoch_{last_epoch_saved + 1}.tar'
+    save_path = os.path.join('saved_models', parameters.model_name, f'last_epoch_{epoch + 1}.tar')
     torch.save({
         'epoch': last_epoch_saved + 1,
         'model_state_dict': network.state_dict(),

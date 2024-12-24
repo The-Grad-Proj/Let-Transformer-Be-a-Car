@@ -56,7 +56,7 @@ class UdacityDataset(Dataset):
         # Keep track of mean and cov value in each channel
         self.mean = {}
         self.std = {}
-        for key in ['angle', 'torque', 'speed']:
+        for key in ['angle', 'speed']:
             self.mean[key] = np.mean(camera_csv[key])
             self.std[key] = np.std(camera_csv[key])
 
