@@ -96,7 +96,25 @@ def main():
     camera_csv = camera_csv.reset_index(drop=True) # Reset the index of the dataframe
     previous = None
     current = None  
+    counter = 0
+    images_count = len(camera_csv)
+    last_file_path = None
+    print(f"Total images: {images_count}")
+    # Check if filename is in optical flow folder:
+    for index, row in camera_csv.iterrows():
+        file_name = camera_csv.loc[index, 'filename']
+        output_file_name = f"{os.path.splitext(file_name)[0]}_optical.jpg"
+        output_path = os.path.join(output_folder, output_file_name)
+        if os.path.exists(output_path):
+            # print(f"Optical flow image already exists: {output_file_name}")
+            last_file_path = output_path
+            camera_csv.drop(index, inplace=True)
+            counter += 1
+    print(f"Last file path: {last_file_path}")
+    print(f"Optical flow images already exist: {counter}")
+    print(f"Images to process: {images_count - counter}")
 
+    optical_count = 1
     # Iterate in the rows of the selected column 
     for index, row in camera_csv.iterrows():
         previous= current
@@ -119,7 +137,8 @@ def main():
         output_path = os.path.join(output_folder, output_file_name)
         cv2.imwrite(output_path, optical_rgb)
         # print(output_path)
-        print(f"Saved optical flow image: {output_file_name}")
+        print(f"Saved optical flow image: {output_file_name}, {optical_count}/{images_count - counter} remaining")
+        optical_count += 1
 
 
 
