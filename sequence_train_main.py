@@ -26,6 +26,7 @@ from model.SimpleTransformer import SimpleTransformer
 from model.LSTM import SequenceModel
 import os
 import re
+import wandb
 # noinspection PyAttributeOutsideInit
 
 parameters = None
@@ -125,9 +126,9 @@ def main():
     # Load parameters if available else use default
     default_parameters = edict(
         learning_rate=0.0001,
-        batch_size=26,
+        batch_size=13,
         seq_len=5,
-        num_workers=16,
+        num_workers=12,
         model_name='MotionTransformer',
         normalization=([0.485, 0.456, 0.406],
                        [0.229, 0.224, 0.225]),
@@ -153,8 +154,9 @@ def main():
     device = torch.device("cuda")
     network, optimizer, parameters, last_epoch = load_model(model_path, default_parameters, device)
     network.to(device)
-
-    DATASET_PATH = r'E:\\GradProject\\Output'
+    wandb.init(config=parameters, project='self-driving-car-commai')
+    wandb.watch(network)
+    DATASET_PATH = r'J:\\Output'
 
     training_set = UD.UdacityDataset(csv_file=fr'{DATASET_PATH}\\train_split.csv',
                                      root_dir=DATASET_PATH,
@@ -276,7 +278,15 @@ def main():
                 val_angle_losses.update(validation_loss_angle.item())
 
         print(f"Epoch {epoch} Validation Loss: Angle = {val_angle_losses.avg}, Speed = {val_speed_losses.avg}")
-
+        report = {
+        'training_angle_loss': train_angle_losses.avg,
+        'epoch': epoch,
+    }
+    if parameters.optical_flow:
+        report['training_speed_loss'] = train_speed_losses.avg
+        report['validation_angle_loss'] = val_angle_losses.avg
+        report['validation_speed_loss'] = val_speed_losses.avg
+        wandb.log(report)
     # Save model after the last epoch
     if last_epoch_saved is not None:
         save_path = os.path.join('saved_models', parameters.model_name, f'last_epoch_{last_epoch_saved + 1}.tar')
