@@ -83,6 +83,8 @@ def calculate_opticalFlow(prev,cur):
 
 
 def main():
+    global device
+    print(device)
     DATASET_PATH = "/home/ibraa04/grad_project/output"
     output_folder= f"{DATASET_PATH}/optical_flow"
     if not os.path.exists(output_folder):
