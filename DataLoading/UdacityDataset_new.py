@@ -27,6 +27,7 @@ class UdacityDataset(Dataset):
         if select_camera:
             assert select_camera in ['left_camera', 'right_camera', 'center_camera'], "Invalid camera: {}".format(select_camera)
             camera_csv = camera_csv[camera_csv['frame_id']==select_camera]
+            camera_csv = camera_csv.reset_index(drop=True)
         self.img_size = img_size
         csv_len = len(camera_csv)
         if slice_frames:
@@ -84,9 +85,13 @@ class UdacityDataset(Dataset):
 
         if self.optical_flow:
             if idx != 0:
-                optical_path = os.path.join(os.path.join(self.root_dir, 'optical_flow'), self.camera_csv['filename'].iloc[idx - 1])
+                optical_path = os.path.join(self.root_dir, 'optical_flow', f"{os.path.splitext(self.camera_csv['filename'].iloc[idx - 1])[0]}_optical.jpg")
                 optical_rgb = cv2.imread(optical_path)
+                if optical_rgb is None:
+                    print(f"Can't read image: {optical_path}")
                 optical_rgb = cv2.cvtColor(optical_rgb, cv2.COLOR_BGR2RGB)
+            else:
+                optical_rgb = original_img
 
             optical_rgb, _ = apply_augs(optical_rgb, 0, augs, optical=True)
             optical_rgb = self.transform(cv2.resize(optical_rgb, tuple(self.img_size)))

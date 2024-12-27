@@ -28,7 +28,7 @@ from DataLoading import ConsecutiveBatchSampler as CB
 from model.MotionTransformer import MotionTransformer
 from model.SimpleTransformer import SimpleTransformer
 from model.LSTM import SequenceModel
-# import wandb
+import wandb
 import os
 import re
 from torch.cuda.amp import GradScaler, autocast
@@ -100,7 +100,7 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 # Get the file with the highest epoch number
-def get_latest_model_path(directory, base_filename="last_epoch"):
+def get_latest_model_path(directory, base_filename="epoch"):
     highest_epoch = -1
     latest_file = None
     
@@ -141,7 +141,7 @@ def main():
         learning_rate = 0.0001,
         batch_size = 13,
         seq_len = 5,
-        num_workers = 8,
+        num_workers = 10,
         model_name = 'MotionTransformer',
         normalization = ([0.485, 0.456, 0.406],
                         [0.229, 0.224, 0.225]),
@@ -167,9 +167,9 @@ def main():
     network, optimizer, parameters, last_epoch = load_model(model_path, default_parameters, device)
     network.to(device)
     
-    # print(f"parameters are {parameters}")
-    # wandb.init(config=parameters, project='self-driving-car')
-    # wandb.watch(network)
+    print(f"parameters are {parameters}")
+    wandb.init(config=parameters, project='SEA-RAFT', name='MotionTransformer with SEA-RAFT')
+    wandb.watch(network)
 
     DATASET_PATH = '/home/ibraa04/grad_project/output'
 
@@ -219,9 +219,10 @@ def main():
     speed_criterion.to(device)
 
 
-    experiment_epochs = 40
+    experiment_epochs = 50
     last_epoch_saved = None
 
+    lowest_val_loss_speed = float('inf')
 
     # Training Loop
     for epoch in range(last_epoch, min(parameters.epochs, last_epoch + experiment_epochs)):
@@ -320,18 +321,27 @@ def main():
                 report['validation_angle_loss'] = val_angle_losses.avg
                 report['validation_speed_loss'] = val_speed_losses.avg
         print(report)
-        # wandb.log(report)
-
+        wandb.log(report)
+        if val_speed_losses.avg < lowest_val_loss_speed:
+            lowest_val_loss_speed = val_speed_losses.avg
+            save_path = f'saved_models/{parameters.model_name}/best_speed.tar'
+            torch.save({
+                'epoch': epoch + 1,
+                'model_state_dict': network.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'parameters': dict(parameters)  # Save parameters for reference
+            }, save_path)
+    
+    
     # Save model after the last epoch
     if last_epoch_saved is not None:
-        save_path = f'saved_models/{parameters.model_name}/last_epoch_{last_epoch_saved + 1}.tar'
+        save_path = f'saved_models/{parameters.model_name}/epoch_{last_epoch_saved + 1}.tar'
         torch.save({
             'epoch': last_epoch_saved + 1,
             'model_state_dict': network.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'parameters': dict(parameters)  # Save parameters for reference
         }, save_path)
-
 
 if __name__ == "__main__":
     main()
