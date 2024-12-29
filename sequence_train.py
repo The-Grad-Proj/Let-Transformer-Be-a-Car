@@ -96,7 +96,7 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 # Directory containing the saved models
-data_dir = "/kaggle/input/commaai-training" # Change this to the directory containing the saved models
+data_dir = "saved_models" # Change this to the directory containing the saved models
 model_dir = os.path.join(data_dir, "MotionTransformer")
 
 # Get the file with the highest epoch number
@@ -134,9 +134,9 @@ network.to(device)
 wandb.init(config=parameters, project='self-driving-car')
 wandb.watch(network)
 
-DATASET_PATH = '/home/norhan/outputUdacity'
+DATASET_PATH = r'J:\\New folder'
 
-udacity_dataset = UD.UdacityDataset(csv_file=f'{DATASET_PATH}/interpolated.csv',
+udacity_dataset = UD.UdacityDataset(csv_file=fr'{DATASET_PATH}\\interpolated.csv',
                              root_dir=DATASET_PATH,
                              transform=transforms.Compose([transforms.ToTensor()]),
                              select_camera='center_camera')
@@ -145,7 +145,7 @@ dataset_size = int(len(udacity_dataset))
 del udacity_dataset
 split_point = int(dataset_size * 0.9)
 
-training_set = UD.UdacityDataset(csv_file=f'{DATASET_PATH}/interpolated.csv',
+training_set = UD.UdacityDataset(csv_file=fr'{DATASET_PATH}\\interpolated.csv',
                              root_dir=DATASET_PATH,
                              transform=transforms.Compose([
                                  #transforms.Resize((224,224)),#(120,320)
@@ -157,7 +157,7 @@ training_set = UD.UdacityDataset(csv_file=f'{DATASET_PATH}/interpolated.csv',
                              optical_flow=parameters.optical_flow,
                              select_camera='center_camera',
                              select_range=(0,split_point))
-validation_set = UD.UdacityDataset(csv_file=f'{DATASET_PATH}/interpolated.csv',
+validation_set = UD.UdacityDataset(csv_file=fr'{DATASET_PATH}\\interpolated.csv',
                              root_dir=DATASET_PATH,
                              transform=transforms.Compose([
                                 # transforms.Resize((224,224)),
@@ -238,7 +238,7 @@ for epoch in range(last_epoch, min(parameters.epochs, last_epoch + experiment_ep
 
     # Save model after every 10 epochs
     if (epoch + 1) % 10 == 0:
-        save_path = f'saved_models/{parameters.model_name}/epoch_{epoch + 1}.tar'
+        save_path = os.path.join('saved_models', parameters.model_name, f'last_epoch_{epoch + 1}.tar')
         torch.save({
             'epoch': epoch + 1,
             'model_state_dict': network.state_dict(),
@@ -296,7 +296,7 @@ for epoch in range(last_epoch, min(parameters.epochs, last_epoch + experiment_ep
 
 # Save model after the last epoch
 if last_epoch_saved is not None:
-    save_path = f'saved_models/{parameters.model_name}/last_epoch_{last_epoch_saved + 1}.tar'
+    save_path = os.path.join('saved_models', parameters.model_name, f'last_epoch_{epoch + 1}.tar')
     torch.save({
         'epoch': last_epoch_saved + 1,
         'model_state_dict': network.state_dict(),

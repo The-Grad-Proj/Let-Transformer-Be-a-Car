@@ -11,7 +11,7 @@ Created on Sat Nov  6 12:24:40 2021
 import torch.multiprocessing as mp
 try:
    mp.set_start_method('spawn', force=True)
-   print("spawned")
+#    print("spawned")
 except RuntimeError:
    pass
 
@@ -28,7 +28,7 @@ from DataLoading import ConsecutiveBatchSampler as CB
 from model.MotionTransformer import MotionTransformer
 from model.SimpleTransformer import SimpleTransformer
 from model.LSTM import SequenceModel
-# import wandb
+import wandb
 import os
 import re
 # noinspection PyAttributeOutsideInit
@@ -150,7 +150,7 @@ def main():
 
 
     # Directory containing the saved models
-    data_dir = "/kaggle/input/commaai-training" # Change this to the directory containing the saved models
+    data_dir = "saved_models" # Change this to the directory containing the saved models
     model_dir = os.path.join(data_dir, "MotionTransformer")
 
     # Get the path of the latest model
@@ -166,12 +166,12 @@ def main():
     network.to(device)
 
 
-    # wandb.init(config=parameters, project='self-driving-car')
-    # wandb.watch(network)
+    wandb.init(config=parameters, project='self-driving-car-dinov2')
+    wandb.watch(network)
 
-    DATASET_PATH = '/home/ibraa04/grad_project/output'
+    DATASET_PATH = r'J:\\New folder'
 
-    udacity_dataset = UD.UdacityDataset(csv_file=f'{DATASET_PATH}/interpolated.csv',
+    udacity_dataset = UD.UdacityDataset(csv_file=fr'{DATASET_PATH}\\interpolated.csv',
                                 root_dir=DATASET_PATH,
                                 transform=transforms.Compose([transforms.ToTensor()]),
                                 select_camera='center_camera')
@@ -180,7 +180,7 @@ def main():
     del udacity_dataset
     split_point = int(dataset_size * 0.9)
 
-    training_set = UD.UdacityDataset(csv_file=f'{DATASET_PATH}/interpolated.csv',
+    training_set = UD.UdacityDataset(csv_file=fr'{DATASET_PATH}\\interpolated.csv',
                                 root_dir=DATASET_PATH,
                                 transform=transforms.Compose([
                                     #transforms.Resize((224,224)),#(120,320)
@@ -192,7 +192,7 @@ def main():
                                 optical_flow=parameters.optical_flow,
                                 select_camera='center_camera',
                                 select_range=(0,split_point))
-    validation_set = UD.UdacityDataset(csv_file=f'{DATASET_PATH}/interpolated.csv',
+    validation_set = UD.UdacityDataset(csv_file=fr'{DATASET_PATH}\\interpolated.csv',
                                 root_dir=DATASET_PATH,
                                 transform=transforms.Compose([
                                     # transforms.Resize((224,224)),
@@ -264,7 +264,7 @@ def main():
 
         # Save model after every 10 epochs
         if (epoch + 1) % 10 == 0:
-            save_path = f'saved_models/{parameters.model_name}/epoch_{epoch + 1}.tar'
+            save_path = os.path.join('saved_models', parameters.model_name, f'last_epoch_{epoch + 1}.tar')
             torch.save({
                 'epoch': epoch + 1,
                 'model_state_dict': network.state_dict(),
@@ -318,11 +318,11 @@ def main():
                 report['validation_angle_loss'] = val_angle_losses.avg
                 report['validation_speed_loss'] = val_speed_losses.avg
         print(report)
-        # wandb.log(report)
+        wandb.log(report)
 
     # Save model after the last epoch
     if last_epoch_saved is not None:
-        save_path = f'saved_models/{parameters.model_name}/last_epoch_{last_epoch_saved + 1}.tar'
+        save_path = os.path.join('saved_models', parameters.model_name, f'last_epoch_{epoch + 1}.tar')
         torch.save({
             'epoch': last_epoch_saved + 1,
             'model_state_dict': network.state_dict(),
