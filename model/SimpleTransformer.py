@@ -20,7 +20,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import models
 import math
-dinov2_vitl14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitl14')
+dinov2_vits14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14')
 class PositionalEncoding(nn.Module):
 
     def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 5000):
@@ -46,7 +46,7 @@ class SimpleTransformer(nn.Module):
     def __init__(self, seq_len):
         self.seq_len = seq_len
         super(SimpleTransformer,self).__init__()
-        self.position_encoder = dinov2_vitl14.eval()
+        self.position_encoder = dinov2_vits14.eval()
         self.d_model = 512
         self.position_embedder = nn.Linear(in_features =1024, out_features = self.d_model, bias=True)
         
