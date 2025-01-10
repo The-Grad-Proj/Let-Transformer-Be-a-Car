@@ -8,7 +8,6 @@ from .MotionEncoder import TransformerMotionEncoder, TransformerMotionEncoderLay
 
 # Load the dinov2_vits14 model
 dinov2_vits14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14')
-
 class PositionalEncoding(nn.Module):
 
     def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 5000):
@@ -34,11 +33,11 @@ class MotionTransformer(nn.Module):
     def __init__(self, seq_len):
         self.seq_len = seq_len
         super(MotionTransformer, self).__init__()
-        self.position_encoder = dinov2_vits14  
-        self.motion_encoder = dinov2_vits14    
+        self.position_encoder = dinov2_vits14.eval()   
+        self.motion_encoder = models.resnet18(pretrained=True)    
         self.d_model = 512
-        self.position_embedder = nn.Linear(in_features=384, out_features=self.d_model, bias=True)  # Adjust in_features
-        self.motion_embedder = nn.Linear(in_features=384, out_features=self.d_model, bias=True)    # Adjust in_features
+        self.position_embedder = nn.Linear(in_features=1024, out_features=self.d_model, bias=True)  # Adjust in_features
+        self.motion_embedder = nn.Linear(in_features=1000, out_features=self.d_model, bias=True)    # Adjust in_features
         
         self.encoder_layer = TransformerMotionEncoderLayer(d_model=self.d_model, nhead=4, dropout=0.1)
         self.pos_encoder = PositionalEncoding(d_model=512)
