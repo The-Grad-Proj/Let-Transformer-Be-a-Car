@@ -51,7 +51,7 @@ parameters = edict(
     image_size=(224, 224),
     all_frames=True,
     optical_flow=True,
-    checkpoint='saved_models/transformer/opticaltransformer.tar'
+    checkpoint='/home/ibraa04/grad_project/models/dinov2/epoch_120.tar'
 )
 
 
@@ -63,15 +63,19 @@ elif parameters.model_name == 'SimpleTransformer' :
     model_object = SimpleTransformer
 else:
     raise KeyError("Unknown Architecture")
-    
-network = model_object(parameters.seq_len)  
-network.load_state_dict(torch.load(parameters.checkpoint))
-network.to(device)
-#wandb.init(config=parameters, project='self-driving-car')
-#wandb.watch(network)
 
-validation_set = ED.EvalDataset(csv_file='/home/chingis/self-driving-car/CH2_final_evaluation.csv',
-                             root_dir='/home/chingis/self-driving-car/center/',
+path = parameters.checkpoint
+ckpt = torch.load(path)
+network = model_object(parameters.seq_len)  
+network.load_state_dict(ckpt['model_state_dict'])
+network.to(device)
+
+
+
+DATA_DIR = "/home/ibraa04/grad_project/eval/Ch2_001"
+
+validation_set = ED.EvalDataset(csv_file=f'{DATA_DIR}/CH2_final_evaluation.csv',
+                             root_dir=f'{DATA_DIR}/center/',
                              transform=transforms.Compose([
                                 # transforms.Resize((224,224)),
                                  transforms.ToTensor(),
