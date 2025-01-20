@@ -33,8 +33,8 @@ class MotionTransformer(nn.Module):
     def __init__(self, seq_len):
         self.seq_len = seq_len
         super(MotionTransformer, self).__init__()
-        self.position_encoder = dinov2_vits14.eval()   
-        self.motion_encoder = models.resnet18(pretrained=True)    
+        self.position_encoder = dinov2_vits14  
+        self.motion_encoder = dinov2_vits14
         self.d_model = 512
         self.position_embedder = nn.Linear(in_features=1024, out_features=self.d_model, bias=True)  # Adjust in_features
         self.motion_embedder = nn.Linear(in_features=1000, out_features=self.d_model, bias=True)    # Adjust in_features
