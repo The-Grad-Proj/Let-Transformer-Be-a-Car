@@ -71,7 +71,7 @@ network.to(device)
 #wandb.watch(network)
 
 validation_set = ED.EvalDataset(csv_file='/home/chingis/self-driving-car/CH2_final_evaluation.csv',
-                             root_dir='/home/chingis/self-driving-car/center/',
+                             root_dir='/home/chingis/self-driving-car/preprocessed_frames/',
                              transform=transforms.Compose([
                                 # transforms.Resize((224,224)),
                                  transforms.ToTensor(),
