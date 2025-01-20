@@ -131,5 +131,5 @@ for pair in predictions:
         res_dic[idx] = res_dic[idx] * 0.5 + 0.5 * angle
 
 
-a_file = open("predictions.json", "w")
+a_file = open("predictions_commaai.json", "w")
 a_file = json.dump(res_dic, a_file)
