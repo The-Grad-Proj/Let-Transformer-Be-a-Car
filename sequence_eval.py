@@ -63,9 +63,11 @@ elif parameters.model_name == 'SimpleTransformer' :
     model_object = SimpleTransformer
 else:
     raise KeyError("Unknown Architecture")
-    
+
+path = parameters.checkpoint
+ckpt = torch.load(path)    
 network = model_object(parameters.seq_len)  
-network.load_state_dict(torch.load(parameters.checkpoint))
+network.load_state_dict(ckpt['model_state_dict'])
 network.to(device)
 #wandb.init(config=parameters, project='self-driving-car')
 #wandb.watch(network)
