@@ -5,6 +5,14 @@ Created on Sun Nov  7 13:05:49 2021
 
 @author: chingis
 """
+
+import torch.multiprocessing as mp
+try:
+   mp.set_start_method('spawn', force=True)
+#    print("spawned")
+except RuntimeError:
+   pass
+
 from PIL import Image
 from itertools import product
 from easydict import EasyDict as edict
@@ -15,7 +23,7 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 from model.MotionTransformer import MotionTransformer
 from model.LSTM import SequenceModel
-from DataLoading import EvalDataset as ED
+from DataLoading import EvalDataset_new as ED
 from DataLoading import ConsecutiveBatchSampler as CB
 import json
 import numpy as np
@@ -41,6 +49,9 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 device = torch.device("cuda")
 
+def custom_collate_fn(batch):
+    return batch[0]
+
 parameters = edict(
     batch_size = 13,
     seq_len = 5,
@@ -51,7 +62,7 @@ parameters = edict(
     image_size=(224, 224),
     all_frames=True,
     optical_flow=True,
-    checkpoint='saved_models/transformer/opticaltransformer.tar'
+    checkpoint='/home/ibraa04/grad_project/Let-Transformer-Be-a-Car/saved_models/transformer/MotionTransformer-Retrained.tar'
 )
 
 
@@ -70,8 +81,10 @@ network.to(device)
 #wandb.init(config=parameters, project='self-driving-car')
 #wandb.watch(network)
 
-validation_set = ED.EvalDataset(csv_file='/home/chingis/self-driving-car/CH2_final_evaluation.csv',
-                             root_dir='/home/chingis/self-driving-car/center/',
+DATASET_PATH = "/home/ibraa04/grad_project/Ch2_001"
+
+validation_set = ED.EvalDataset(csv_file=f'{DATASET_PATH}/CH2_final_evaluation.csv',
+                             root_dir=f'{DATASET_PATH}/center/',
                              transform=transforms.Compose([
                                 # transforms.Resize((224,224)),
                                  transforms.ToTensor(),
@@ -84,7 +97,7 @@ validation_set = ED.EvalDataset(csv_file='/home/chingis/self-driving-car/CH2_fin
 
 
 validation_cbs = CB.ConsecutiveBatchSampler(data_source=validation_set, batch_size=parameters.batch_size, shuffle=False, drop_last=False, seq_len=parameters.seq_len, use_all_frames=parameters.all_frames)
-validation_loader = DataLoader(validation_set, sampler=validation_cbs, num_workers=parameters.num_workers, collate_fn=(lambda x: x[0]))
+validation_loader = DataLoader(validation_set, sampler=validation_cbs, num_workers=parameters.num_workers, collate_fn=custom_collate_fn)
 criterion =  torch.nn.MSELoss()
 criterion.to(device)
 
@@ -131,5 +144,5 @@ for pair in predictions:
         res_dic[idx] = res_dic[idx] * 0.5 + 0.5 * angle
 
 
-a_file = open("predictions.json", "w")
+a_file = open("predictions_retrained.json", "w")
 a_file = json.dump(res_dic, a_file)
